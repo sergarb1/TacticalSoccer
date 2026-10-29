@@ -17,6 +17,7 @@ import { saveMatch, clearSavedMatch, loadSavedMatch } from '../game/serialize';
 import { useSettings } from './useSettings';
 import { nextAiAction } from '../ai/strategy';
 import type { AiDecision } from '../ai/strategy';
+import { commentaryForEvent, ambientLine, type Line } from '../game/commentary';
 import type { Cell, GameEvent, GameState, MatchConfig } from '../game/types';
 
 export type InteractionMode = 'idle' | 'moving' | 'passing' | 'stealing' | 'shooting';
@@ -41,8 +42,15 @@ const g = {
   /** Casillas resaltadas como destinos de movimiento válido. */
   highlightCells: ref<Cell[]>([]),
   /** Balón visual en vuelo (para disparos). */
-  ballFx: ref<{ target: Cell; until: number } | null>(null)
+  ballFx: ref<{ target: Cell; until: number } | null>(null),
+  /** Últimas frases del narrador (la [0] es la más reciente). */
+  commentary: ref<Line[]>([])
 };
+
+let lineId = 0;
+function pushLine(text: string, kind: Line['kind']): void {
+  g.commentary.value = [{ id: ++lineId, text, kind }, ...g.commentary.value].slice(0, 4);
+}
 
 export const game = g;
 
@@ -56,13 +64,19 @@ function duration(ms: number): number {
   return settings.animations ? ms : 0;
 }
 
-/** Consume los eventos del motor para sonidos/animaciones. */
+/** Consume los eventos del motor para sonidos, animaciones y narración. */
 function applyEvents(events: GameEvent[]): void {
+  const s = g.state.value;
   for (const e of events) {
     if (e.type === 'sound') playSound(e.name, soundOpt());
     if (e.type === 'shot' && e.ballDest) {
       g.ballFx.value = { target: e.outcome === 'goal' ? e.target : e.ballDest, until: Date.now() };
       window.setTimeout(() => (g.ballFx.value = null), duration(520) + 20);
+    }
+    // narración: el evento 'goal' ya narra el gol; el resto de disparos sí
+    if (s && !(e.type === 'shot' && e.outcome === 'goal')) {
+      const line = commentaryForEvent(s, e);
+      if (line) pushLine(line, 'event');
     }
   }
 }
@@ -105,6 +119,13 @@ export function tryResume(): GameState | null {
 
 export function hasSavedMatch(): boolean {
   return loadSavedMatch() !== null;
+}
+
+/** Frase ambiental del narrador (la llama la barra con su temporizador). */
+export function pushAmbientLine(): void {
+  const s = g.state.value;
+  if (!s || s.phase !== 'playing') return;
+  pushLine(ambientLine(s), 'ambient');
 }
 
 /* Selección y modos ----------------------------------------------------- */

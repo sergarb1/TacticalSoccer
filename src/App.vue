@@ -11,6 +11,7 @@ import MatchResult from './components/MatchResult.vue';
 import PauseMenu from './components/PauseMenu.vue';
 import TurnBanner from './components/TurnBanner.vue';
 import TutorialOverlay from './components/TutorialOverlay.vue';
+import CommentaryBar from './components/CommentaryBar.vue';
 import {
   game, startMatch, tryResume, selectPlayer, boardCellClick, boardTokenClick,
   actionMove, actionPass, actionShotArm, actionShotConfirm, actionSteal,
@@ -289,6 +290,8 @@ function endTutorial(): void {
         </div>
       </div>
 
+      <CommentaryBar :state="state" />
+
       <TurnBanner
         :text="ui.turnBanner ?? null"
         kind="turn"
@@ -327,7 +330,7 @@ function endTutorial(): void {
 .game-screen {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0.6rem 0.8rem 1.4rem;
+  padding: 0.6rem 0.8rem 3.4rem; /* hueco para la barra de narración fija */
   display: grid;
   gap: 0.55rem;
 }
@@ -366,8 +369,15 @@ function endTutorial(): void {
 .ms-row { display: grid; grid-template-columns: 1fr auto auto; gap: 0.9rem; padding: 1.5px 0; }
 .ms-row span { color: var(--text-dim); }
 .ms-row b { min-width: 26px; text-align: right; }
-@media (max-width: 980px) {
+@media (max-width: 1080px) {
   .game-layout { flex-direction: column; }
   .side-col { width: 100%; flex: 1 1 auto; }
+}
+@media (max-width: 640px) {
+  .side-col > .minimap,
+  .side-col > .mini-stats { display: none; }
+  .board-col { order: -1; }
+  .game-screen { padding: 0.5rem 0.5rem 3.2rem; gap: 0.5rem; }
+  .board-svg { max-height: 62vh; }
 }
 </style>

@@ -100,35 +100,35 @@ export interface TeamDef {
 export const TEAMS: TeamDef[] = [
   {
     id: 'sur',
-    name: 'Atlético del Sur',
-    short: 'SUR',
+    name: 'Garra Che',
+    short: 'GRR',
     style: 'ofensivo',
-    desc: 'Delanteros goleadores, líneas algo frágiles al robo.',
-    roster: ['A. Ferrán', 'B. Ortiz', 'C. Miranda', 'D. Almazán', 'E. Solá', 'F. Marqués', 'G. Ibáñez', 'H. Peral', 'I. Duarte', 'J. Cimadevilla', 'K. Rosales']
+    desc: 'Cañoneros de banda a banda; sus defensas sufren un poco.',
+    roster: ['Kily', 'Villa', 'Guedes', 'Nani', 'Paco']
   },
   {
     id: 'norte',
-    name: 'Club Norte Real',
-    short: 'NOR',
+    name: 'Muro Che',
+    short: 'MRU',
     style: 'defensivo',
-    desc: 'Muro defensivo y capitán con reflejos félidos.',
-    roster: ['L. Olaizola', 'M. Zubiaga', 'N. Blanco', 'Ñ. Cardín', 'O. Álvarez', 'P. Rekarte', 'Q. Arostegui', 'R. Misenta', 'S. Corres', 'T. Aldamiz', 'U. Goicoechea']
+    desc: 'Defensa de cemento y un portero con manoplas de gigante.',
+    roster: ['Cañizares', 'Ayala', 'Marchena', 'Caneira', 'Palop']
   },
   {
     id: 'valle',
-    name: 'Valle Escondido',
-    short: 'VAL',
+    name: 'Turia FC',
+    short: 'TUR',
     style: 'equilibrado',
-    desc: 'Conjunto homogéneo, sin estar por debajo en ningún frente.',
-    roster: ['V. Navascués', 'W. Errea', 'X. Tolosana', 'Y. Gallaín', 'Z. Landeta', 'A. Achirica', 'B. Bilbao', 'C. Carasol', 'D. Estrada', 'E. Frutos', 'F. Gámez']
+    desc: 'Equilibrados como el río que riega la ciudad.',
+    roster: ['Parejo', 'Silva', 'Mata', 'Bernat', 'Alba']
   },
   {
     id: 'puerto',
-    name: 'Puerto Bruma',
-    short: 'BRU',
+    name: 'Litoral Che',
+    short: 'LIT',
     style: 'táctico',
-    desc: 'Rapidísimo por los costados, medios con mucho fútbol.',
-    roster: ['Á. Quintana', 'B. Medina', 'C. Villar', 'D. Rego', 'E. Barba', 'F. Louro', 'G. Sardina', 'H. Piñeiro', 'I. Maio', 'J. Torreiro', 'K. Vilar']
+    desc: 'Toque elegante y muchísimo fútbol entre líneas.',
+    roster: ['Mendieta', 'Aimed', 'Farinós', 'Zahovic', 'Carboni']
   }
 ];
 

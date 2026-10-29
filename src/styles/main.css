@@ -35,6 +35,21 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* --- controles táctiles --- */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  overscroll-behavior: none;
+}
+svg .token.interactive, .hl-cell, .mm-dot {
+  touch-action: manipulation;
+}
+button {
+  touch-action: manipulation;
+  user-select: none;
+}
+
 #app { min-height: 100vh; }
 
 button {
@@ -114,7 +129,12 @@ h1, h2, h3 { margin: 0; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-@media (max-width: 980px) {
-  .game-layout { flex-direction: column; }
-  .side-col { width: 100%; flex-direction: row; flex-wrap: wrap; }
+/* --- móvil: objetivos táctiles generosos --- */
+@media (pointer: coarse) {
+  button:not(.small) { min-height: 44px; }
+  .stat-row { font-size: 0.9rem; }
+}
+@media (max-width: 640px) {
+  button { padding: 0.6rem 0.8rem; font-size: 0.95rem; }
+  .panel { border-radius: 12px; }
 }
