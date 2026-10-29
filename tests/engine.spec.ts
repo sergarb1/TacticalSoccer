@@ -222,7 +222,7 @@ describe('disparos y goles', () => {
     expect(close).toBeGreaterThan(farRead.goal);
   });
 
-  it('un disparo acertado suma un gol y saca el equipo que encajó', () => {
+  it('un disparo acertado suma un gol y saca el equipo que marcó', () => {
     const s = fresh();
     const prepped = prepareShooter(s);
     // fuerza resultado de gol: la primera tirada debe estar bajo pGoal
@@ -232,8 +232,8 @@ describe('disparos y goles', () => {
     const r = doShoot(s, prepped.shooter);
     expect(r.ok).toBe(true);
     expect(s.score[0]).toBe(before + 1);
-    // tras el gol, recolocación: un equipo acudió al saque y le toca (el que encajó)
-    expect(s.currentTeam).toBe(1);
+    // tras el gol, recolocación: el equipo que marcó saca (regla Gañan Edition)
+    expect(s.currentTeam).toBe(0);
     expect(s.ball.carrier).toBeNull();
     expect(s.ball.pos).toEqual({ col: 4, row: 2 });
   });

@@ -2,23 +2,28 @@
 import { TEAM_COLORS } from '../game/config';
 import type { TeamId } from '../game/types';
 
-defineProps<{
-  text: string | null;
-  kind: 'turn' | 'goal' | 'info';
-  team?: TeamId | null;
-}>();
+withDefaults(
+  defineProps<{
+    text: string | null;
+    kind: 'turn' | 'goal' | 'info';
+    team?: TeamId | null;
+    big?: boolean;
+  }>(),
+  { big: false }
+);
 </script>
 
 <template>
   <transition name="fade">
-    <div v-if="text" class="banner-layer" :class="kind === 'goal' ? 'goal' : ''">
+    <div v-if="text" class="banner-layer" :class="[kind === 'goal' ? 'goal' : '', big ? 'big' : '']">
       <div
         class="turn-banner banner-body"
+        :class="{ 'goal-big': big }"
         :style="kind === 'goal' && team !== null && team !== undefined
           ? { background: `linear-gradient(90deg, ${TEAM_COLORS[team].dark}, ${TEAM_COLORS[team].main})` }
           : {}"
       >
-        {{ kind === 'goal' ? '¡GOL!' : '' }} {{ text }}
+        {{ text }}
       </div>
     </div>
   </transition>
@@ -45,4 +50,15 @@ defineProps<{
   box-shadow: var(--shadow);
 }
 .goal .banner-body { color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+.big { top: 22%; }
+.goal-big {
+  animation: goal-banner-in 3.2s ease forwards;
+  font-size: clamp(2.8rem, 10vw, 5.4rem);
+  letter-spacing: 0.14em;
+  padding: 1rem 3rem;
+  border-radius: 20px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-big { animation: none; }
+}
 </style>

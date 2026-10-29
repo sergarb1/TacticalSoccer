@@ -194,7 +194,7 @@ export function doShoot(state: GameState, shooterId: number): ActionResult {
     case 'goal':
       log(state, `¡GOL del ${teamOfTeamId(shooterTeam(p))}! Disparo de ${p.name}.`);
       events.push({ type: 'goal', team: p.team });
-      kickoffAfterGoal(state, enemyOf(p.team), events);
+      kickoffAfterGoal(state, p.team, events);
       break;
     case 'save':
       log(state, `¡Parada del portero! Despeja el balón.`);
@@ -245,6 +245,8 @@ export function doSteal(state: GameState, defenderId: number, victimId: number):
   const res = resolveSteal(state, d, v, stream.next.bind(stream), (n) => emit(events, n));
   events.push({ type: 'steal', defenderId: d.id, success: res.success });
   if (res.success) {
+    // Robo exitoso: puede aún pasar o chutar este turno si le quedan AP.
+    d.hasActed = false;
     log(state, `¡${d.name} roba el balón a ${v.name}!`);
   } else {
     log(state, `${d.name} no logra arrebatar el balón.`);
@@ -315,7 +317,7 @@ export function notePossession(state: GameState): void {
   }
 }
 
-/** Tras un gol: recoloca a ambos equipos y saca el equipo que encajó. */
+/** Tras un gol: recoloca a ambos equipos y saca el equipo que marcó. */
 function kickoffAfterGoal(state: GameState, kickTeam: TeamId, events: GameEvent[]): void {
   applyKickoff(state, kickTeam);
   state.currentTeam = kickTeam;

@@ -74,8 +74,11 @@ watch(
     const s = state.value!;
     if (score[0] !== prevScore.value[0] || score[1] !== prevScore.value[1]) {
       const team: TeamId = score[0] !== prevScore.value[0] ? 0 : 1;
-      goalBanner.value = { text: `${team === 0 ? s.config.home.teamId : s.config.away.teamId.toUpperCase()} · ${s.score[0]}–${s.score[1]}`, team };
-      window.setTimeout(() => (goalBanner.value = null), 2200);
+      goalBanner.value = {
+        text: `GOL!!!! · ${team === 0 ? s.config.home.teamId : s.config.away.teamId.toUpperCase()} · ${s.score[0]}–${s.score[1]}`,
+        team
+      };
+      window.setTimeout(() => (goalBanner.value = null), 3200);
     }
     prevScore.value = [...s.score] as [number, number];
   }
@@ -301,6 +304,7 @@ function endTutorial(): void {
         v-if="goalBanner"
         :text="goalBanner.text"
         kind="goal"
+        :big="true"
         :team="goalBanner.team"
       />
 
