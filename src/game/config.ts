@@ -11,8 +11,8 @@ import type { TeamId } from './types';
  */
 export const FIELD_COLS = 9;
 export const FIELD_ROWS = 5;
-/** Filas ocupadas por la boca de la portería. */
-export const GOAL_ROWS = [1, 2, 3] as const;
+/** Filas ocupadas por la boca de la portería (arco pequeño: solo el centro). */
+export const GOAL_ROWS = [2] as const;
 /** Fila central de la boca del arco: objetivo de los disparos. */
 export const GOAL_CENTER_ROW = 2;
 /** Casilla del saque de centro. */

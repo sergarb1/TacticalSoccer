@@ -75,7 +75,7 @@ export function readShot(state: GameState, shooter: Player): ShotRead {
   const keeper = keeperOf(state, enemyOf(shooter.team));
   const reflex = keeper ? keeper.stats.reflexes : 5;
 
-  let goal = 78 - dist * 10 + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
+  let goal = 80 - dist * 10 + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
   goal = Math.max(3, Math.min(82, goal));
   const off = Math.round(Math.max(4, Math.min(30, 6 + Math.max(0, dist - 2) * 1.6 - (shooter.stats.shoot - 5) * 0.8 + anglePenalty * 0.5)));
   const save = Math.max(0, 100 - Math.round(goal) - off - block); // restante

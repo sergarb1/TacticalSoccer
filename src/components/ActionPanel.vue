@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { GameState } from '../game/types';
 
 const props = defineProps<{
@@ -22,10 +23,16 @@ const emit = defineEmits<{
   (e: 'cancel'): void;
 }>();
 
-const selected = props.selectedId === null ? null : props.state.players.find((p) => p.id === props.selectedId) ?? null;
-const isOwn = selected !== null && selected.team === props.state.currentTeam;
-const hasBall = selected !== null && props.state.ball.carrier === selected.id;
-const canAct = isOwn && props.state.phase === 'playing' && props.state.ap > 0;
+/* Reactivos: si se leen una sola vez, la selección del campo no
+   actualizaría los botones y «Mover» parecería no responder. */
+const selected = computed(() =>
+  props.selectedId === null
+    ? null
+    : props.state.players.find((p) => p.id === props.selectedId) ?? null
+);
+const isOwn = computed(() => selected.value !== null && selected.value.team === props.state.currentTeam);
+const hasBall = computed(() => selected.value !== null && props.state.ball.carrier === selected.value.id);
+const canAct = computed(() => isOwn.value && props.state.phase === 'playing' && props.state.ap > 0);
 </script>
 
 <template>
@@ -73,7 +80,7 @@ const canAct = isOwn && props.state.phase === 'playing' && props.state.ap > 0;
     <!-- acciones base -->
     <template v-else>
       <div class="buttons">
-        <button :disabled="!canAct || !isOwn || !selected || selected.hasMoved" @click="emit('move')">🏃 Mover (1)</button>
+        <button :disabled="!canAct || !selected || selected.hasMoved" @click="emit('move')">🏃 Mover (1)</button>
         <button :disabled="!canAct || !hasBall || !selected || selected.hasActed" @click="emit('pass-mode')">🤝 Pasar (1)</button>
         <button :disabled="!canAct || !hasBall || !selected || selected.hasActed" @click="emit('shoot-arm')">⚡ Chutar (1)</button>
         <button :disabled="!canAct || hasBall || !isOwn || !selected || selected.hasActed" @click="emit('steal-mode')">🛡️ Defender (1)</button>

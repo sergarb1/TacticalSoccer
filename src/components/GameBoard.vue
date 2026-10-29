@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import {
   VB_W, VB_H, ISO_MATRIX, allBoardCells, cellToPx, cellPoly, svgToCell
 } from '../composables/boardLayout';
+import { GOAL_ROWS } from '../game/config';
 import PlayerToken from './PlayerToken.vue';
 import type { GameState, Player, Cell } from '../game/types';
 
@@ -84,7 +85,7 @@ const passLines = computed<PassLine[]>(() => {
 
 /** side del arco atacado por el equipo en turno (0=arco derecho, 1=izquierdo). */
 const attackRight = computed(() => props.state.currentTeam === 0);
-const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 400 } : { x: 210, y: 100 }));
+const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x: 210, y: 148 }));
 </script>
 
 <template>
@@ -134,17 +135,17 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 400 } : { x
         <circle cx="2.1" cy="2.5" r="0.06" fill="var(--line)" />
         <circle cx="6.9" cy="2.5" r="0.06" fill="var(--line)" />
 
-        <!-- porterías con red -->
+        <!-- porterías pequeñas con red (alto de GOAL_ROWS) -->
         <g>
-          <rect x="-0.45" y="1" width="0.45" height="3" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
+          <rect x="-0.45" :y="GOAL_ROWS[0]" width="0.45" :height="GOAL_ROWS.length" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
           <g stroke="rgba(240,248,244,0.45)" stroke-width="1" vector-effect="non-scaling-stroke">
-            <line v-for="n in 3" :key="`nvL${n}`" :x1="-0.45 + (n * 0.45) / 4" y1="1" :x2="-0.45 + (n * 0.45) / 4" y2="4" vector-effect="non-scaling-stroke" />
-            <line v-for="n in 5" :key="`nhL${n}`" :x1="-0.45" :y1="1 + (n * 3) / 6" x2="0" :y2="1 + (n * 3) / 6" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 3" :key="`nvL${n}`" :x1="-0.45 + (n * 0.45) / 4" :y1="GOAL_ROWS[0]" :x2="-0.45 + (n * 0.45) / 4" :y2="GOAL_ROWS[0] + GOAL_ROWS.length" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 2" :key="`nhL${n}`" :x1="-0.45" :y1="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" x2="0" :y2="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" vector-effect="non-scaling-stroke" />
           </g>
-          <rect x="9" y="1" width="0.45" height="3" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
+          <rect x="9" :y="GOAL_ROWS[0]" width="0.45" :height="GOAL_ROWS.length" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
           <g stroke="rgba(240,248,244,0.45)" stroke-width="1" vector-effect="non-scaling-stroke">
-            <line v-for="n in 3" :key="`nvR${n}`" :x1="9 + (n * 0.45) / 4" y1="1" :x2="9 + (n * 0.45) / 4" y2="4" vector-effect="non-scaling-stroke" />
-            <line v-for="n in 5" :key="`nhR${n}`" :x1="9" :y1="1 + (n * 3) / 6" x2="9.45" :y2="1 + (n * 3) / 6" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 3" :key="`nvR${n}`" :x1="9 + (n * 0.45) / 4" :y1="GOAL_ROWS[0]" :x2="9 + (n * 0.45) / 4" :y2="GOAL_ROWS[0] + GOAL_ROWS.length" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 2" :key="`nhR${n}`" :x1="9" :y1="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" x2="9.45" :y2="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" vector-effect="non-scaling-stroke" />
           </g>
         </g>
 
@@ -153,9 +154,9 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 400 } : { x
           <rect
             v-if="attackRight"
             x="8.9"
-            y="0.85"
+            :y="GOAL_ROWS[0] - 0.2"
             width="0.62"
-            height="3.3"
+            :height="GOAL_ROWS.length + 0.4"
             fill="none"
             stroke="var(--gold)"
             stroke-width="3"
@@ -165,9 +166,9 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 400 } : { x
           <rect
             v-else
             x="-0.52"
-            y="0.85"
+            :y="GOAL_ROWS[0] - 0.2"
             width="0.62"
-            height="3.3"
+            :height="GOAL_ROWS.length + 0.4"
             fill="none"
             stroke="var(--gold)"
             stroke-width="3"

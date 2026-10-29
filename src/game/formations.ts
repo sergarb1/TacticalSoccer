@@ -25,7 +25,7 @@ export interface Formation {
   positions: FormationPos[];
 }
 
-const GK = (y = 0.5): FormationPos => ({ role: 'POR', label: 'Portero', x: 0.05, y });
+const GK = (y = 0.45): FormationPos => ({ role: 'POR', label: 'Portero', x: 0.05, y });
 
 /** Formaciones de 5 contra 5: un portero y cuatro jugadores de campo. */
 export const FORMATIONS: Formation[] = [
