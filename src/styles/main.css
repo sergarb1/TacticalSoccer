@@ -31,7 +31,7 @@ html, body {
   min-height: 100%;
   background: radial-gradient(1200px 800px at 50% -10%, #173425 0%, var(--bg-0) 60%) fixed, var(--bg-0);
   color: var(--text);
-  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  font-family: "Bebas Neue", "Arial Narrow", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -104,6 +104,14 @@ h1, h2, h3 { margin: 0; }
 .stat-bar > i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #57c46c, var(--gold)); }
 
 /* animación de banner de turno */
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('/fonts/bebasneue.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @keyframes banner-in {
   0% { opacity: 0; transform: translateY(-14px) scale(0.96); }
   12% { opacity: 1; transform: translateY(0) scale(1); }

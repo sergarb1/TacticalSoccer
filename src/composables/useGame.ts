@@ -64,11 +64,31 @@ function duration(ms: number): number {
   return settings.animations ? ms : 0;
 }
 
+/** Vibración háptica en móvil (ignorada en escritorio y si está apagada). */
+function vibrate(pattern: number | number[]): void {
+  if (!settings.haptics || typeof navigator === 'undefined' || !('vibrate' in navigator)) return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    /* algunos navegadores la bloquean sin gesto previo: silencio */
+  }
+}
+
+export function haptic(pattern: number | number[]): void {
+  vibrate(pattern);
+}
+
 /** Consume los eventos del motor para sonidos, animaciones y narración. */
 function applyEvents(events: GameEvent[]): void {
   const s = g.state.value;
   for (const e of events) {
     if (e.type === 'sound') playSound(e.name, soundOpt());
+    // vibración según el tipo de evento (gol/parada/robo tienen patrón propio)
+    if (e.type === 'sound') {
+      if (e.name === 'goal') vibrate([80, 60, 140]);
+      else if (e.name === 'save' || e.name === 'steal') vibrate(40);
+      else if (e.name === 'shot') vibrate(30);
+    }
     if (e.type === 'shot' && e.ballDest) {
       g.ballFx.value = { target: e.outcome === 'goal' ? e.target : e.ballDest, until: Date.now() };
       window.setTimeout(() => (g.ballFx.value = null), duration(520) + 20);

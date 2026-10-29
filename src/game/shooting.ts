@@ -4,8 +4,8 @@
  * Módulo puro: modifica el GameState que recibe y devuelve el desenlace.
  */
 import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP } from './config';
-import { euclid } from './field';
-import { enemyOf } from './rules';
+import { euclid, inField } from './field';
+import { enemyOf, isOccupied } from './rules';
 import type { Cell, GameState, Player, ShotOutcome, SoundName } from './types';
 
 export interface ShotRead {
@@ -61,6 +61,27 @@ function blockersOnLine(state: GameState, shooter: Player, target: Cell): number
 
 export function keeperOf(state: GameState, team: 0 | 1): Player | undefined {
   return state.players.find((p) => p.team === team && p.role === 'POR');
+}
+
+/**
+ * Casilla de despeje del portero: una contigua libre elegida al azar.
+ * Devuelve null si no hay ninguna (entonces retiene el balón).
+ */
+function clearDestination(state: GameState, keeper: Player, rng: () => number): Cell | null {
+  const ownGoalCol = keeper.team === 0 ? 0 : FIELD_COLS;
+  const candidates: Cell[] = [];
+  for (let dc = -1; dc <= 1; dc++) {
+    for (let dr = -1; dr <= 1; dr++) {
+      if (dc === 0 && dr === 0) continue;
+      const c = { col: keeper.pos.col + dc, row: keeper.pos.row + dr };
+      if (inField(c) && !isOccupied(state, c) && Math.abs(c.col - ownGoalCol) > 0.5) {
+        candidates.push(c);
+      }
+    }
+  }
+  if (candidates.length === 0) return null;
+  const idx = Math.floor(rng() * candidates.length) % candidates.length;
+  return candidates[idx];
 }
 
 /** Lectura de la jugada de tiro, para la previsualización de la UI y la IA. */
@@ -141,8 +162,15 @@ export function resolveShot(
     state.stats[shooter.team].onTarget += 1;
     const keeper = keeperOf(state, enemyOf(shooter.team));
     if (keeper) {
-      state.ball.carrier = keeper.id;
-      state.ball.pos = { ...keeper.pos };
+      // 38%: el portero despeja a una casilla contigua libre; si no, retiene.
+      const dest = rng() < 0.38 ? clearDestination(state, keeper, rng) : null;
+      if (dest) {
+        state.ball.carrier = null;
+        state.ball.pos = dest;
+      } else {
+        state.ball.carrier = keeper.id;
+        state.ball.pos = { ...keeper.pos };
+      }
     } else {
       state.ball.carrier = null;
       state.ball.pos = { col: target.col === FIELD_COLS ? FIELD_COLS - 1 : 1, row: GOAL_CENTER_ROW };

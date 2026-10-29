@@ -19,6 +19,7 @@ void settings;
     <div class="hero">
       <div class="ball-logo"><span>⚽</span></div>
       <h1 class="title-logo">TACTICAL<br /><span class="accent">SOCCER</span></h1>
+      <p class="edition gañan">Gañan Edition 🍊</p>
       <p class="tagline">Fútbol táctico por turnos · 3 PA por turno</p>
     </div>
 
@@ -49,6 +50,17 @@ void settings;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 -6px 12px rgba(0, 0, 0, 0.3);
 }
 .title-logo { font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1.05; }
+.edition {
+  font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  color: var(--gold);
+  font-size: 1.05rem;
+  margin-top: 0.35rem;
+  border-bottom: 2px solid var(--gold);
+  display: inline-block;
+  padding: 0 0.35rem;
+}
 .tagline { color: var(--text-dim); margin-top: 0.5rem; }
 .menu-card {
   display: grid;

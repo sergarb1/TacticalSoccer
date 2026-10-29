@@ -48,6 +48,12 @@ const volumePercent = computed({
           Animaciones
         </label>
       </div>
+      <div class="setting-row">
+        <label>
+          <input type="checkbox" v-model="settings.haptics" />
+          Vibración (móvil)
+        </label>
+      </div>
 
       <details class="help">
         <summary>¿Cómo se juega?</summary>

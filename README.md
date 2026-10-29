@@ -1,4 +1,4 @@
-# ⚽ Tactical Soccer
+# ⚽ Tactical Soccer · Gañan Edition
 
 Juego de fútbol táctico **por turnos** para navegador, gratuito y de código abierto.
 Dirige un partido completo: mueve fichas, planifica pases, intenta tiros, roba balones
@@ -209,6 +209,10 @@ todo el cálculo ocurre en el navegador y los ajustes viven en `localStorage`.
 - No se usan fotografías de futbolistas, escudos, logotipos ni recursos
   comerciales o con licencia dudosa.
 - Detalles en [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+- **Tipografía Bebas Neue** (SIL OFL 1.1) auto-alojada en `public/fonts/`, usada
+  en la interfaz.
+- **Sonidos de impacto CC0** del pack *Ultrasound* de Kenney, auto-alojados en
+  `public/sfx/` con respaldo sintetizado vía Web Audio.
 
 Las plantillas de nombres de jugadores son ficticias; cualquier parecido es
 coincidencia.

@@ -8,6 +8,7 @@ export interface Settings {
   sound: boolean;
   volume: number; // 0..1
   animations: boolean;
+  haptics: boolean;
   tutorialDone: boolean;
   aiLevel: 'easy' | 'normal' | 'hard';
 }
@@ -16,6 +17,7 @@ const DEFAULTS: Settings = {
   sound: true,
   volume: 0.7,
   animations: true,
+  haptics: true,
   tutorialDone: false,
   aiLevel: 'normal'
 };
@@ -29,6 +31,7 @@ function load(): Settings {
       sound: typeof parsed.sound === 'boolean' ? parsed.sound : DEFAULTS.sound,
       volume: typeof parsed.volume === 'number' ? Math.min(1, Math.max(0, parsed.volume)) : DEFAULTS.volume,
       animations: typeof parsed.animations === 'boolean' ? parsed.animations : DEFAULTS.animations,
+      haptics: typeof parsed.haptics === 'boolean' ? parsed.haptics : DEFAULTS.haptics,
       tutorialDone: typeof parsed.tutorialDone === 'boolean' ? parsed.tutorialDone : false,
       aiLevel: parsed.aiLevel === 'easy' || parsed.aiLevel === 'hard' ? parsed.aiLevel : DEFAULTS.aiLevel
     };

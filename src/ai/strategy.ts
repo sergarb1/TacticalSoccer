@@ -36,6 +36,7 @@ export function nextAiAction(state: GameState): AiDecision {
   if (state.phase !== 'playing') return null;
   const team = state.currentTeam;
   if (state.config.mode !== 'ai' || state.config.aiTeam !== team) return null;
+  if (state.ap <= 0) return null; // sin AP no hay ninguna acción posible
   const prof = DIFFICULTY[state.config.aiLevel as AiLevel];
   const jitter = () => rand(state) * prof.jitter;
 

@@ -2,9 +2,15 @@
 
 ## Recursos externos
 
-**Ninguno.** Tactical Soccer no incluye imágenes, fuentes, sonidos ni otros
-recursos de terceros. Todo el contenido visual y sonoro fue creado expresamente
-para este proyecto:
+- **Fuente «Bebas Neue»** por Ryoichi Tsunekichi, licencia SIL Open Font License
+  1.1. Auto-alojada en `public/fonts/bebasneue.woff2` y usada como tipografía
+  base de la interfaz.
+- **Sonidos de impacto** del pack *Ultrasound* de [Kenney](https://kenney.nl)
+  (CC0/public domain), auto-alojados en `public/sfx/*.wav` y usados como
+  muestras de paso/robo con respaldo sintetizado vía Web Audio.
+
+Todo el resto del contenido visual y sonoro fue creado expresamente para este
+proyecto:
 
 - **Gráficos**: dibujados con SVG y CSS propios (campo de fútbol a rayas,
   líneas reglamentarias, porterías con red, fichas circulares de los equipos,

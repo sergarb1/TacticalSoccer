@@ -238,18 +238,49 @@ describe('disparos y goles', () => {
     expect(s.ball.pos).toEqual({ col: 4, row: 2 });
   });
 
-  it('la parada da el balón al portero rival', () => {
+  it('la parada la retiene el portero (tirada de despeje favorable)', () => {
     const s = fresh();
     const prepped = prepareShooter(s);
     const read = readShot(s, s.players.find((p) => p.id === prepped.shooter)!);
-    // Semilla cuyo primer valor cae entre pGoal y pGoal+pSave
     const keeper = s.players.find((p) => p.team === 1 && p.role === 'POR')!;
-    const seed = seedBetween(s, read.goal, Math.min(100, read.goal + read.save), (v) => v * 100);
+    // 1ª tirada entre goal y goal+save; 2ª ≥ 38% (no despeja)
+    const seed = seedForSave(s, read.goal, Math.min(100, read.goal + read.save), true);
+    if (seed === null) throw new Error('no hay semilla de parada con despeje');
     s.rng = seed;
     const r = doShoot(s, prepped.shooter);
     if (!r.ok) throw new Error(r.message);
     expect(s.ball.carrier).toBe(keeper.id);
   });
+
+  it('el portero a veces despeja tras la parada', () => {
+    const s = fresh();
+    const prepped = prepareShooter(s);
+    const read = readShot(s, s.players.find((p) => p.id === prepped.shooter)!);
+    const keeper = s.players.find((p) => p.team === 1 && p.role === 'POR')!;
+    // 1ª tirada en la franja de parada; 2ª < 38% (despeja)
+    const seed = seedForSave(s, read.goal, Math.min(100, read.goal + read.save), false);
+    if (seed === null) return; // improbable: no hay semilla que despeje
+    s.rng = seed;
+    const r = doShoot(s, prepped.shooter);
+    if (!r.ok) throw new Error(r.message);
+    expect(s.ball.carrier).not.toBe(keeper.id);
+    // el balón sale de las manos del portero (suelto o recogido por otro)
+    expect(s.ball.pos).not.toEqual(keeper.pos);
+  });
+
+  /** Busca semilla cuya 1ª tirada caiga en [lo,hi) y cuya 2ª decida despeje/retención. */
+  function seedForSave(s: GameState, lo: number, hi: number, held: boolean): number | null {
+    void s;
+    for (let seed = 0; seed < 20000; seed++) {
+      const st = new Stream(seed);
+      const v1 = st.next() * 100;
+      if (v1 >= lo && v1 < hi) {
+        const v2 = st.next() * 100;
+        if (held ? v2 >= 38 : v2 < 38) return seed;
+      }
+    }
+    return null;
+  }
 
   it('el disparo fuera da la posesión al portero rival', () => {
     const s = fresh();

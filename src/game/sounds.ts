@@ -1,6 +1,7 @@
 /**
- * Efectos de sonido generados por código (WebAudio). Sin ficheros externos.
- * Cada sonido es una secuencia corta de notas con envolvente simple.
+ * Efectos de sonido: capas de muestras CC0 (Kenney Impact Sounds, ver
+ * ATTRIBUTIONS.md) para acciones físicas + síntesis WebAudio para el
+ * resto. Si una muestra no está disponible, cae a la síntesis.
  */
 import type { SoundName } from './types';
 
@@ -61,6 +62,18 @@ const SOUNDS: Record<SoundName, Note[]> = {
   ]
 };
 
+/* --- muestras CC0 (Kenney, recortadas del pack Impact Sounds) --- */
+const SAMPLES: Partial<Record<SoundName, { file: string; vol: number }>> = {
+  shot: { file: 'impact-1', vol: 0.9 },   // golpe de balón potente
+  save: { file: 'impact-soft-1', vol: 0.8 }, // palmeo del portero
+  steal: { file: 'impact-2', vol: 0.75 },  // robo/entrada
+  stealFail: { file: 'impact-3', vol: 0.5 },
+  pass: { file: 'impact-soft-1', vol: 0.5 },
+  move: { file: 'impact-soft-1', vol: 0.35 }
+};
+
+const audioCache = new Map<string, HTMLAudioElement>();
+
 function playNote(c: AudioContext, n: Note, vol: number): void {
   const t0 = c.currentTime + (n.delay ?? 0);
   const osc = c.createOscillator();
@@ -80,9 +93,35 @@ function playNote(c: AudioContext, n: Note, vol: number): void {
 /** Reproduce un sonido si la capa está activa y el volumen > 0. */
 export function playSound(name: SoundName, options: { enabled: boolean; volume: number }): void {
   if (!options.enabled || options.volume <= 0) return;
+  const sample = SAMPLES[name];
+  if (sample) {
+    const a = audioCache.get(sample.file) ?? createAudio(sample.file, sample.vol);
+    if (a) {
+      try {
+        a.currentTime = 0;
+        a.volume = Math.max(0, Math.min(1, sample.vol * options.volume));
+        void a.play();
+        return; // muestra reproducida; no se sintetiza
+      } catch {
+        /* muestra no disponible: cae a WebAudio */
+      }
+    }
+  }
   const c = ensureCtx();
   if (!c) return;
   const notes = SOUNDS[name];
   if (!notes) return;
   for (const n of notes) playNote(c, n, options.volume);
+}
+
+function createAudio(file: string, vol: number): HTMLAudioElement | null {
+  try {
+    const a = new Audio(`${import.meta.env.BASE_URL}sfx/${file}.wav`);
+    a.preload = 'auto';
+    a.volume = vol;
+    audioCache.set(file, a);
+    return a;
+  } catch {
+    return null;
+  }
 }

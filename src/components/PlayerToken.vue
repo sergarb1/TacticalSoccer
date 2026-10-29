@@ -29,7 +29,7 @@ const dim = computed(() => (props.player.hasMoved && props.player.hasActed ? 0.5
   <g
     class="token"
     :class="{ interactive }"
-    :transform="`translate(${pos.x},${pos.y})`"
+    :style="{ transform: `translate(${pos.x}px, ${pos.y}px)` }"
     :opacity="dim"
     @click="emit('token-click', player.id)"
   >
@@ -79,7 +79,10 @@ const dim = computed(() => (props.player.hasMoved && props.player.hasActed ? 0.5
 </template>
 
 <style scoped>
-.token { cursor: default; }
+.token { cursor: default; transition: transform 0.22s cubic-bezier(0.3, 1.1, 0.5, 1); }
 .token.interactive { cursor: pointer; }
 .token.interactive:hover circle[r='21'] { filter: brightness(1.25); }
+@media (prefers-reduced-motion: reduce) {
+  .token { transition: none; }
+}
 </style>
