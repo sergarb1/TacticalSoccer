@@ -1,0 +1,311 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import MainMenu from './components/MainMenu.vue';
+import MatchSetup from './components/MatchSetup.vue';
+import GameBoard from './components/GameBoard.vue';
+import Scoreboard from './components/Scoreboard.vue';
+import PlayerPanel from './components/PlayerPanel.vue';
+import ActionPanel from './components/ActionPanel.vue';
+import MiniMap from './components/MiniMap.vue';
+import MatchResult from './components/MatchResult.vue';
+import PauseMenu from './components/PauseMenu.vue';
+import TurnBanner from './components/TurnBanner.vue';
+import TutorialOverlay from './components/TutorialOverlay.vue';
+import {
+  game, startMatch, tryResume, selectPlayer, boardCellClick, boardTokenClick,
+  actionMove, actionPass, actionShotArm, actionShotConfirm, actionSteal,
+  finishTurn, stealOpportunities, currentPassOptions, shotPreview, setMode, cancelMode,
+  moveHighlights
+} from './composables/useGame';
+import { useSettings } from './composables/useSettings';
+import { passOptionsFor } from './game/passing';
+import { getPlayer } from './game/rules';
+import type { MatchConfig, TeamId } from './game/types';
+
+const screen = ref<'menu' | 'setup' | 'game'>('menu');
+const paused = ref(false);
+const settings = useSettings();
+const setupTutorial = ref(false);
+
+const state = computed(() => game.state.value);
+const ui = game.ui;
+const boardHighlights = computed(() => moveHighlights());
+
+/* ---------------- banner de gol ---------------- */
+const prevScore = ref<[number, number]>([0, 0]);
+const goalBanner = ref<{ text: string; team: TeamId } | null>(null);
+
+watch(
+  () => state.value?.score,
+  (score) => {
+    if (!score) return;
+    const s = state.value!;
+    if (score[0] !== prevScore.value[0] || score[1] !== prevScore.value[1]) {
+      const team: TeamId = score[0] !== prevScore.value[0] ? 0 : 1;
+      goalBanner.value = { text: `${team === 0 ? s.config.home.teamId : s.config.away.teamId.toUpperCase()} · ${s.score[0]}–${s.score[1]}`, team };
+      window.setTimeout(() => (goalBanner.value = null), 2200);
+    }
+    prevScore.value = [...s.score] as [number, number];
+  }
+);
+
+/* ---------------- flujo general ---------------- */
+
+function goSetup(tutorial: boolean): void {
+  setupTutorial.value = tutorial;
+  screen.value = 'setup';
+}
+
+function onStart(cfg: MatchConfig): void {
+  if (setupTutorial.value) {
+    startMatch({ ...cfg, mode: 'ai', aiTeam: 1, aiLevel: 'easy', seed: Math.floor(Math.random() * 4294967295) });
+    startTutorial();
+  } else {
+    startMatch(cfg);
+  }
+  screen.value = 'game';
+}
+
+function onResume(): void {
+  const saved = tryResume();
+  if (saved) {
+    screen.value = 'game';
+    setupTutorial.value = false;
+  }
+}
+
+function quitToMenu(): void {
+  screen.value = 'menu';
+  paused.value = false;
+  setupTutorial.value = false;
+  tutorial.value.index = 0;
+  tutorial.value.active = false;
+}
+
+const passOptions = computed(() => {
+  const s = state.value;
+  if (!s || ui.selectedId === null || s.ball.carrier !== ui.selectedId) return [];
+  return passOptionsFor(s, getPlayer(s, ui.selectedId)!).map((o) => {
+    const t = getPlayer(s, o.targetId)!;
+    return { targetId: o.targetId, chance: o.chance, name: t.name, num: t.num };
+  });
+});
+
+const stealOptions = computed(() => (ui.mode === 'stealing' ? stealOpportunities() : []));
+
+const shotRead = computed(() => (ui.mode === 'shooting' ? shotPreview() : null));
+
+/* ---------------- tutorial ---------------- */
+interface TutStep {
+  title: string;
+  text: string;
+  /** 'next' = avanza con botón; 'auto' = avanza cuando cambie el estado. */
+  wait: 'next' | 'auto';
+}
+
+const tutorial = ref({ active: false, index: 0, snapshots: {} as Record<string, unknown> });
+
+const TUT_STEPS: TutStep[] = [
+  { title: '1 · Selecciona', text: 'Pulsa sobre tu delantero rojo más cercano al balón. Las fichas de tu equipo llevan anillo blanco.', wait: 'auto' },
+  { title: '2 · Muévete', text: 'Pulsa «Mover» y elige la casilla resaltada del balón. Tu jugador lo controlará al llegar.', wait: 'auto' },
+  { title: '3 · Pasa', text: 'Con la pelota, pulsa «Pasar» y elige el compañero verde de la lista. El % es la probabilidad de que llegue.', wait: 'auto' },
+  { title: '4 · Avanza', text: 'Ahora «Mover» con el jugador que recibió el balón: acércate al arco rival (a la derecha).', wait: 'auto' },
+  { title: '5 · ¡Chuta!', text: 'Pulsa «Chutar» para ver la probabilidad de gol y confirma el disparo.', wait: 'auto' },
+  { title: '6 · Defiende', text: 'Con un jugador sin balón junto a un rival con pelota, «Defender» intenta un robo. También presiona por cercanía (ajusta pases y tiros rivales).', wait: 'next' },
+  { title: '7 · Termina', text: 'Cuando agotes tus 3 PA (o quieras), pulsa «Terminar turno» y responderá la IA azul.', wait: 'auto' }
+];
+
+const tutStep = computed(() => TUT_STEPS[tutorial.value.index]);
+
+function startTutorial(): void {
+  tutorial.value = { active: true, index: 0, snapshots: {} };
+  tutorial.value.snapshots = snapshot();
+}
+
+function snapshot(): Record<string, unknown> {
+  const s = state.value;
+  if (!s) return {};
+  return {
+    carrier: s.ball.carrier,
+    shots: s.stats[0].shots,
+    acted: s.players.filter((p) => p.team === 0 && (p.hasMoved || p.hasActed)).length,
+    turnKey: `${s.currentTeam}-${s.teamTurns}`
+  };
+}
+
+const changed = (k: string): boolean => {
+  const s = state.value;
+  if (!s) return false;
+  return JSON.stringify(snapshot()[k]) !== JSON.stringify(tutorial.value.snapshots[k]);
+};
+
+watch(
+  () => state.value,
+  () => {
+    const t = tutorial.value;
+    if (!t.active || !tutStep.value || tutStep.value.wait !== 'auto') return;
+    const step = t.index;
+    if (changed('turnKey') && step === 0) return; // aún no: primer paso depende del clic
+    let done = false;
+    switch (step) {
+      case 0: done = ui.selectedId !== null; break;
+      case 1: done = changed('carrier') && snapshot().carrier !== null; break;
+      case 2: done = changed('acted') || changed('carrier'); break;
+      case 3: done = changed('acted') || changed('carrier') || changed('shots'); break;
+      case 4: done = changed('shots'); break;
+      case 5: done = changed('turnKey'); break;
+      default: done = false;
+    }
+    if (done) {
+      tutorial.value.snapshots = snapshot();
+      tutorial.value.index = Math.min(t.index + 1, TUT_STEPS.length - 1);
+      if (t.index === TUT_STEPS.length - 1 && step === TUT_STEPS.length - 1 - 1 + 1) {
+        endTutorial();
+      }
+    }
+  },
+  { deep: true }
+);
+
+function tutorialNext(): void {
+  const t = tutorial.value;
+  t.index = Math.min(t.index + 1, TUT_STEPS.length - 1);
+  t.snapshots = snapshot();
+  if (t.index === TUT_STEPS.length - 1 && TUT_STEPS[t.index].wait === 'next') {
+    endTutorial();
+  }
+}
+
+function skipTutorial(): void {
+  endTutorial();
+}
+
+function endTutorial(): void {
+  tutorial.value.active = false;
+  settings.tutorialDone = true;
+}
+</script>
+
+<template>
+  <main>
+    <MainMenu
+      v-if="screen === 'menu'"
+      @hotseat="goSetup(false)"
+      @vs-ai="goSetup(false)"
+      @tutorial="goSetup(true)"
+      @resume="onResume"
+    />
+
+    <MatchSetup v-else-if="screen === 'setup'" @start="onStart" @back="screen = 'menu'" />
+
+    <div v-else-if="state" class="game-screen">
+      <Scoreboard :state="state" @pause="paused = true" />
+
+      <div class="game-layout">
+        <div class="board-col">
+          <GameBoard
+            :state="state"
+            :selected-id="ui.selectedId"
+            :mode="ui.mode"
+            :highlight-cells="ui.mode === 'moving' ? boardHighlights : []"
+            :pass-options="passOptions"
+            :shot-armed="ui.mode === 'shooting'"
+            :shot-percent="shotRead?.goal ?? null"
+            :ball-fx="game.ballFx.value"
+            @cell-click="boardCellClick"
+            @token-click="boardTokenClick"
+          />
+        </div>
+
+        <div class="side-col">
+          <PlayerPanel :state="state" :selected-id="ui.selectedId" />
+          <ActionPanel
+            :state="state"
+            :selected-id="ui.selectedId"
+            :mode="ui.mode"
+            :pass-options-list="passOptions"
+            :steal-options="stealOptions"
+            @move="actionMove()"
+            @pass-mode="setMode('passing')"
+            @pass-to="actionPass($event)"
+            @steal-mode="setMode('stealing')"
+            @steal="actionSteal($event)"
+            @shoot-arm="actionShotArm()"
+            @shoot-confirm="actionShotConfirm()"
+            @shoot-cancel="cancelMode()"
+            @cancel="cancelMode()"
+            @end-turn="finishTurn()"
+          />
+          <MiniMap :state="state" @token-click="boardTokenClick" />
+          <section class="panel mini-stats">
+            <div class="ms-row"><span>Tiros</span><b>{{ state.stats[0].shots }}</b><b>{{ state.stats[1].shots }}</b></div>
+            <div class="ms-row"><span>A puerta</span><b>{{ state.stats[0].onTarget }}</b><b>{{ state.stats[1].onTarget }}</b></div>
+            <div class="ms-row"><span>Robos</span><b>{{ state.stats[0].steals }}</b><b>{{ state.stats[1].steals }}</b></div>
+          </section>
+        </div>
+      </div>
+
+      <TurnBanner
+        :text="ui.turnBanner ?? null"
+        kind="turn"
+        :team="state.currentTeam"
+      />
+      <TurnBanner
+        v-if="goalBanner"
+        :text="goalBanner.text"
+        kind="goal"
+        :team="goalBanner.team"
+      />
+
+      <TutorialOverlay
+        v-if="tutorial.active && tutStep"
+        :step-title="tutStep.title"
+        :step-text="tutStep.text"
+        :step-index="tutorial.index"
+        :step-total="TUT_STEPS.length"
+        @next="tutorialNext"
+        @skip="skipTutorial"
+      />
+
+      <PauseMenu v-if="paused" @resume="paused = false" @quit="quitToMenu" />
+
+      <MatchResult
+        v-if="ui.gameOver"
+        :state="state"
+        @again="((screen = 'setup'), setupTutorial = false)"
+        @menu="quitToMenu"
+      />
+    </div>
+  </main>
+</template>
+
+<style scoped>
+.game-screen {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.6rem 0.8rem 1.4rem;
+  display: grid;
+  gap: 0.55rem;
+}
+.scoreboard { }
+.game-layout {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+.board-col { flex: 1 1 auto; min-width: 0; }
+.side-col {
+  width: 300px;
+  flex: 0 0 300px;
+  display: grid;
+  gap: 0.55rem;
+}
+.mini-stats { padding: 0.7rem 0.9rem; font-size: 0.8rem; }
+.ms-row { display: grid; grid-template-columns: 1fr auto auto; gap: 0.9rem; padding: 1.5px 0; }
+.ms-row span { color: var(--text-dim); }
+.ms-row b { min-width: 26px; text-align: right; }
+@media (max-width: 980px) {
+  .game-layout { flex-direction: column; }
+  .side-col { width: 100%; flex: 1 1 auto; }
+}
+</style>

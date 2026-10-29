@@ -1,0 +1,77 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import { TOKEN_R, cellToPx } from '../composables/boardLayout';
+import type { Player } from '../game/types';
+
+const props = defineProps<{
+  player: Player;
+  selected: boolean;
+  isCarrier: boolean;
+  isTurnOf: boolean;
+  interactive: boolean;
+}>();
+
+const emit = defineEmits<{ (e: 'token-click', id: number): void }>();
+
+const pos = computed(() => cellToPx(props.player.pos));
+const colors = computed(() =>
+  props.player.team === 0
+    ? { main: 'var(--home)', dark: 'var(--home-dark)' }
+    : { main: 'var(--away)', dark: 'var(--away-dark)' }
+);
+const dim = computed(() => (props.player.hasMoved && props.player.hasActed ? 0.55 : props.player.hasMoved || props.player.hasActed ? 0.8 : 1));
+</script>
+
+<template>
+  <g
+    class="token"
+    :class="{ interactive }"
+    :transform="`translate(${pos.x},${pos.y})`"
+    :opacity="dim"
+    @click="emit('token-click', player.id)"
+  >
+    <!-- sombra en el suelo (efecto pseudo-3D) -->
+    <ellipse :cy="TOKEN_R * 0.85" :rx="TOKEN_R * 1.02" :ry="TOKEN_R * 0.5" fill="rgba(0,0,0,0.35)" />
+    <!-- anillo de selección -->
+    <circle
+      v-if="selected"
+      class="selected-ring"
+      :r="TOKEN_R + 6"
+      fill="none"
+      stroke="var(--gold)"
+      stroke-width="3"
+    />
+    <!-- ficha -->
+    <circle :r="TOKEN_R" :fill="colors.main" :stroke="colors.dark" stroke-width="3" />
+    <circle :r="TOKEN_R - 5" fill="rgba(255,255,255,0.16)" />
+    <text
+      :y="TOKEN_R * 0.36"
+      text-anchor="middle"
+      font-size="15"
+      font-weight="800"
+      fill="#fff"
+      style="paint-order: stroke; stroke: rgba(0,0,0,0.45); stroke-width: 3px; pointer-events: none"
+    >{{ player.num }}</text>
+    <!-- anillo de turno: jugador puede aún actuar -->
+    <circle
+      v-if="isTurnOf"
+      :r="TOKEN_R + 2.5"
+      fill="none"
+      stroke="#fff"
+      stroke-opacity="0.35"
+      stroke-width="1.5"
+      stroke-dasharray="4 5"
+    />
+    <!-- indicador de posesión -->
+    <g v-if="isCarrier">
+      <circle :cx="TOKEN_R * 0.9" :cy="-TOKEN_R * 0.9" r="6.5" fill="#fff" stroke="#222" stroke-width="2" />
+      <circle :cx="TOKEN_R * 0.9" :cy="-TOKEN_R * 0.9" r="2.6" fill="#222" />
+    </g>
+  </g>
+</template>
+
+<style scoped>
+.token { cursor: default; }
+.token.interactive { cursor: pointer; }
+.token.interactive:hover circle[r='21'] { filter: brightness(1.25); }
+</style>
