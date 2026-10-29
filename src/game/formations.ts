@@ -27,71 +27,50 @@ export interface Formation {
 
 const GK = (y = 0.5): FormationPos => ({ role: 'POR', label: 'Portero', x: 0.05, y });
 
-const DEF_4: FormationPos[] = [
-  { role: 'LI', label: 'Lateral izq.', x: 0.15, y: 0.15 },
-  { role: 'DFC', label: 'Central izq.', x: 0.13, y: 0.37 },
-  { role: 'DFC', label: 'Central der.', x: 0.13, y: 0.63 },
-  { role: 'LD', label: 'Lateral der.', x: 0.15, y: 0.85 }
-];
-
+/** Formaciones de 5 contra 5: un portero y cuatro jugadores de campo. */
 export const FORMATIONS: Formation[] = [
   {
-    id: '4-4-2',
-    name: '4-4-2 Clásica',
+    id: '1-2-1',
+    name: '1-2-1 Rombo',
     positions: [
       GK(),
-      ...DEF_4,
-      { role: 'EI', label: 'Extremo izq.', x: 0.34, y: 0.12 },
-      { role: 'MC', label: 'Mediocentro izq.', x: 0.32, y: 0.37 },
-      { role: 'MC', label: 'Mediocentro der.', x: 0.32, y: 0.63 },
-      { role: 'ED', label: 'Extremo der.', x: 0.34, y: 0.88 },
-      { role: 'DC', label: 'Delantero', x: 0.44, y: 0.4, striker: true },
-      { role: 'DC', label: 'Segundo delantero', x: 0.47, y: 0.6 }
+      { role: 'DFC', label: 'Central', x: 0.18, y: 0.5 },
+      { role: 'MC', label: 'Interior izq.', x: 0.34, y: 0.28 },
+      { role: 'MC', label: 'Interior der.', x: 0.34, y: 0.72 },
+      { role: 'DC', label: 'Delantero', x: 0.45, y: 0.5, striker: true }
     ]
   },
   {
-    id: '4-3-3',
-    name: '4-3-3 Ofensiva',
+    id: '2-1-1',
+    name: '2-1-1 Sólida',
     positions: [
       GK(),
-      ...DEF_4,
-      { role: 'MCD', label: 'Pivot', x: 0.26, y: 0.5 },
-      { role: 'MC', label: 'Mediocentro izq.', x: 0.31, y: 0.25 },
-      { role: 'MC', label: 'Mediocentro der.', x: 0.31, y: 0.75 },
-      { role: 'EI', label: 'Extremo izq.', x: 0.44, y: 0.14 },
-      { role: 'DC', label: 'Punta central', x: 0.47, y: 0.5, striker: true },
-      { role: 'ED', label: 'Extremo der.', x: 0.44, y: 0.86 }
+      { role: 'DFC', label: 'Central izq.', x: 0.17, y: 0.3 },
+      { role: 'DFC', label: 'Central der.', x: 0.17, y: 0.7 },
+      { role: 'MC', label: 'Mediocentro', x: 0.35, y: 0.5, striker: true },
+      { role: 'DC', label: 'Delantero', x: 0.46, y: 0.5 }
     ]
   },
   {
-    id: '4-2-3-1',
-    name: '4-2-3-1',
+    id: '2-2',
+    name: '2-2 Casi todo al ataque',
     positions: [
       GK(),
-      ...DEF_4,
-      { role: 'MCD', label: 'Pivot izq.', x: 0.25, y: 0.38 },
-      { role: 'MCD', label: 'Pivot der.', x: 0.25, y: 0.62 },
-      { role: 'EI', label: 'Interior izq.', x: 0.38, y: 0.16 },
-      { role: 'MC', label: 'Mediapunta', x: 0.4, y: 0.5, striker: true },
-      { role: 'ED', label: 'Interior der.', x: 0.38, y: 0.84 },
-      { role: 'DC', label: 'Delantero centro', x: 0.47, y: 0.5 }
+      { role: 'DFC', label: 'Central izq.', x: 0.16, y: 0.33 },
+      { role: 'DFC', label: 'Central der.', x: 0.16, y: 0.67 },
+      { role: 'DC', label: 'Delantero izq.', x: 0.42, y: 0.3, striker: true },
+      { role: 'DC', label: 'Delantero der.', x: 0.42, y: 0.7 }
     ]
   },
   {
-    id: '3-5-2',
-    name: '3-5-2',
+    id: '3-1',
+    name: '3-1 Catón',
     positions: [
       GK(),
-      { role: 'DFC', label: 'Central izq.', x: 0.14, y: 0.3 },
+      { role: 'DFC', label: 'Central izq.', x: 0.15, y: 0.22 },
       { role: 'DFC', label: 'Libero', x: 0.12, y: 0.5 },
-      { role: 'DFC', label: 'Central der.', x: 0.14, y: 0.7 },
-      { role: 'EI', label: 'Carrilero izq.', x: 0.34, y: 0.1 },
-      { role: 'MC', label: 'Mediocentro izq.', x: 0.31, y: 0.36 },
-      { role: 'MC', label: 'Mediocentro der.', x: 0.31, y: 0.64 },
-      { role: 'ED', label: 'Carrilero der.', x: 0.34, y: 0.9 },
-      { role: 'MC', label: 'Mediapunta', x: 0.42, y: 0.5, striker: true },
-      { role: 'DC', label: 'Delantero', x: 0.46, y: 0.4 },
-      { role: 'DC', label: 'Delantero', x: 0.45, y: 0.6 }
+      { role: 'DFC', label: 'Central der.', x: 0.15, y: 0.78 },
+      { role: 'DC', label: 'Delantero', x: 0.42, y: 0.5, striker: true }
     ]
   }
 ];
@@ -114,7 +93,7 @@ export interface TeamDef {
   short: string;
   style: Style;
   desc: string;
-  /** 11 nombres, sin orden concreto. Initial + apellido en español. */
+  /** 5 nombres, sin orden concreto. Initial + apellido en español. */
   roster: string[];
 }
 
@@ -188,8 +167,8 @@ const STYLE_BIAS: Record<Style, Partial<Record<keyof Stats, number>>> = {
 
 const clamp10 = (v: number): number => Math.max(1, Math.min(10, v));
 
-/** Número de dorsal estándar por índice en la formación. */
-const NUMBERS = [1, 3, 4, 5, 2, 6, 8, 10, 7, 9, 11];
+/** Dorsales estándar de un equipo de 5 (portero + 4). */
+const NUMBERS_FIVE = [1, 4, 8, 10, 9];
 
 export interface BuiltPlayer {
   name: string;
@@ -211,7 +190,7 @@ export function buildRoster(team: TeamDef, formationId: string): BuiltPlayer[] {
     const stat = (k: keyof Stats) => clamp10(base[k] + (bias[k] ?? 0) + ((h >>> 16) % 2 ? 0 : jitter));
     return {
       name: team.roster[i] ?? `Jugador ${i + 1}`,
-      num: NUMBERS[i] ?? i + 1,
+      num: NUMBERS_FIVE[i] ?? i + 1,
       role: pos.role,
       stats: {
         speed: stat('speed'),
@@ -240,7 +219,7 @@ export function absolutePos(norm: { x: number; y: number }, team: TeamId): { col
   };
 }
 
-/** Coloca a los 22 jugadores según sus formaciones y devuelve los ids. */
+/** Coloca a los 10 jugadores (5 por equipo) según sus formaciones. */
 export function placeTeams(state: GameState, cfg: MatchConfig): void {
   state.players = [];
   let id = 0;

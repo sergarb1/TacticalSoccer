@@ -31,6 +31,37 @@ const state = computed(() => game.state.value);
 const ui = game.ui;
 const boardHighlights = computed(() => moveHighlights());
 
+/* ------- barra de consejos contextuales ------- */
+const contextualTip = computed(() => {
+  const s = state.value;
+  if (!s) return '';
+  switch (ui.mode) {
+    case 'moving': return 'Elige una casilla blanca para moverte (gasta 1 PA).';
+    case 'passing': return 'Pulsa «Pasar a…» en la lista: el % es la probabilidad de acierto.';
+    case 'stealing': return 'Pulsa «Robar» en la lista de rivales al alcance.';
+    case 'shooting': return '';
+    default: break;
+  }
+  if (s.ball.carrier === null) return 'Balón suelto: lleva una ficha hasta su rombo dorado para controlarlo.';
+  if (ui.selectedId ===null) return 'Pulsa una ficha con anillo blanco: tienes 3 PA para mover, pasar, chutar o defender.';
+  const sel = s.players.find((p) => p.id === ui.selectedId);
+  if (sel && sel.team === s.currentTeam && s.currentTeam === (s.config.mode === 'ai' ? 0 : s.currentTeam)) {
+    return 'Elige una acción de esta ficha en el panel de la derecha, o «Terminar turno».';
+  }
+  return 'Si te quedas sin ideas: mover al espacio, pasar y chutar pronto gana partidos.';
+});
+
+/* ------- aviso «¿primera vez?» ------- */
+const nudge = ref(!settings.tutorialDone);
+function dismissNudge(): void {
+  nudge.value = false;
+  settings.tutorialDone = true;
+}
+function startFromNudge(): void {
+  startTutorial();
+  nudge.value = false;
+}
+
 /* ---------------- banner de gol ---------------- */
 const prevScore = ref<[number, number]>([0, 0]);
 const goalBanner = ref<{ text: string; team: TeamId } | null>(null);
@@ -215,6 +246,19 @@ function endTutorial(): void {
             @cell-click="boardCellClick"
             @token-click="boardTokenClick"
           />
+
+          <div class="panel tip-strip">
+            <span class="tip-ico" aria-hidden="true">💡</span>
+            <p class="tip-text">{{ contextualTip }}</p>
+          </div>
+
+          <div v-if="nudge && !settings.tutorialDone && !tutorial.active" class="panel nudge-card">
+            <b>¿Primera vez?</b> El tutorial te enseña a jugar en 7 pasos.
+            <div class="nudge-actions">
+              <button class="btn gold" @click="startFromNudge">Empezar tutorial</button>
+              <button class="btn ghost" @click="dismissNudge">Ocultar</button>
+            </div>
+          </div>
         </div>
 
         <div class="side-col">
@@ -301,6 +345,24 @@ function endTutorial(): void {
   gap: 0.55rem;
 }
 .mini-stats { padding: 0.7rem 0.9rem; font-size: 0.8rem; }
+.tip-strip {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  border-left: 3px solid var(--gold);
+}
+.tip-ico { font-size: 1rem; }
+.tip-text { margin: 0; font-size: 0.82rem; color: var(--text-dim); }
+.nudge-card {
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--gold);
+  font-size: 0.82rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.nudge-actions { display: flex; gap: 0.5rem; }
+.nudge-actions .btn { padding: 0.35rem 0.7rem; font-size: 0.75rem; }
 .ms-row { display: grid; grid-template-columns: 1fr auto auto; gap: 0.9rem; padding: 1.5px 0; }
 .ms-row span { color: var(--text-dim); }
 .ms-row b { min-width: 26px; text-align: right; }

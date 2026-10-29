@@ -3,7 +3,7 @@
  * portero; resolución en cinco resultados posibles.
  * Módulo puro: modifica el GameState que recibe y devuelve el desenlace.
  */
-import { GOAL_CENTER_ROW, FIELD_COLS, PRESSURE_CAP } from './config';
+import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP } from './config';
 import { euclid } from './field';
 import { enemyOf } from './rules';
 import type { Cell, GameState, Player, ShotOutcome, SoundName } from './types';
@@ -75,9 +75,9 @@ export function readShot(state: GameState, shooter: Player): ShotRead {
   const keeper = keeperOf(state, enemyOf(shooter.team));
   const reflex = keeper ? keeper.stats.reflexes : 5;
 
-  let goal = 82 - dist * 5.5 + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
+  let goal = 78 - dist * 10 + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
   goal = Math.max(3, Math.min(82, goal));
-  const off = Math.round(Math.max(3, Math.min(32, 7 + (dist - 4) * 0.9 - (shooter.stats.shoot - 5) * 0.8 + anglePenalty * 0.5)));
+  const off = Math.round(Math.max(4, Math.min(30, 6 + Math.max(0, dist - 2) * 1.6 - (shooter.stats.shoot - 5) * 0.8 + anglePenalty * 0.5)));
   const save = Math.max(0, 100 - Math.round(goal) - off - block); // restante
 
   return {
@@ -95,7 +95,7 @@ function shotHint(goalP: number, dist: number, anglePenalty: number): string {
   if (goalP >= 55) return '¡Oportunidad clarísima!';
   if (goalP >= 35) return 'Buena ocasión de gol.';
   if (goalP >= 18) return 'Disparo arriesgado.';
-  if (dist > 10 && anglePenalty > 20) return 'Muy lejos y en mala posición.';
+  if (dist > 7 && anglePenalty > 20) return 'Muy lejos y en mala posición.';
   return 'Casi imposible de marcar.';
 }
 
@@ -145,7 +145,7 @@ export function resolveShot(
       state.ball.pos = { ...keeper.pos };
     } else {
       state.ball.carrier = null;
-      state.ball.pos = { col: target.col === FIELD_COLS ? FIELD_COLS - 1 : 1, row: 4 };
+      state.ball.pos = { col: target.col === FIELD_COLS ? FIELD_COLS - 1 : 1, row: GOAL_CENTER_ROW };
     }
     sound('save');
     return { outcome: 'save', ballDest: state.ball.pos, newCarrierId: keeper?.id ?? null, sound: 'save' };
@@ -158,7 +158,7 @@ export function resolveShot(
     const dirRow = Math.sign(target.row - shooter.pos.row) || 0;
     const dest: Cell = {
       col: Math.max(0, Math.min(FIELD_COLS - 1, shooter.pos.col + dirCol * 2)),
-      row: Math.max(0, Math.min(9, shooter.pos.row + dirRow))
+      row: Math.max(0, Math.min(FIELD_ROWS - 1, shooter.pos.row + dirRow))
     };
     let taker: Player | null = null;
     let bestD = 2;

@@ -5,7 +5,7 @@
  * Módulo puro: sin DOM ni dependencias externas (probable con vitest).
  */
 import {
-  AP_PER_TURN, COST, MINUTES_PER_TURN, TURNS_PER_HALF, TEAM_COLORS
+  AP_PER_TURN, COST, MINUTES_PER_TURN, TURNS_PER_HALF, TEAM_COLORS, passRange
 } from './config';
 import { Stream } from './rng';
 import {
@@ -129,7 +129,7 @@ export function doPass(state: GameState, passerId: number, targetId: number): Ac
   if (t.team !== p.team || t.id === p.id) return { ok: false, code: 'bad_target', message: 'Debes elegir a un compañero.', events: [] };
 
   const dist = Math.max(Math.abs(p.pos.col - t.pos.col), Math.abs(p.pos.row - t.pos.row));
-  const maxDist = 4 + Math.floor(p.stats.pass / 2);
+  const maxDist = passRange(p.stats.pass);
   if (dist > maxDist) {
     const chanceSnapshot = passOptionsFor(state, p).find((o) => o.targetId === t.id);
     void chanceSnapshot;

@@ -10,9 +10,9 @@ function invariantCheck(s: GameState, step: number): void {
   expect(new Set(cells).size, `posición duplicada en paso ${step}`).toBe(cells.length);
   for (const p of s.players) {
     expect(p.pos.col).toBeGreaterThanOrEqual(0);
-    expect(p.pos.col).toBeLessThanOrEqual(14);
+    expect(p.pos.col).toBeLessThanOrEqual(8);
     expect(p.pos.row).toBeGreaterThanOrEqual(0);
-    expect(p.pos.row).toBeLessThanOrEqual(9);
+    expect(p.pos.row).toBeLessThanOrEqual(4);
   }
   if (s.ball.carrier !== null) {
     const c = s.players.find((p) => p.id === s.ball.carrier);
@@ -24,8 +24,8 @@ function invariantCheck(s: GameState, step: number): void {
 /** Dirige una partida completa con la IA por ambos lados o con un lado tonto. */
 function playMatch(seed: number, level: 'easy' | 'normal' | 'hard'): GameState {
   const base: MatchConfig = {
-    home: { teamId: 'sur', formation: '4-4-2' },
-    away: { teamId: 'puerto', formation: '3-5-2' },
+    home: { teamId: 'sur', formation: '1-2-1' },
+    away: { teamId: 'puerto', formation: '2-1-1' },
     mode: 'ai',
     aiTeam: 1,
     aiLevel: level,

@@ -14,6 +14,9 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'token-click', id: number): void }>();
 
 const pos = computed(() => cellToPx(props.player.pos));
+/** bal\u00f3n mini de posesi\u00f3n, sobre la parte superior-derecha de la ficha */
+const mbX = TOKEN_R * 0.92;
+const mbY = -TOKEN_R * 0.95;
 const colors = computed(() =>
   props.player.team === 0
     ? { main: 'var(--home)', dark: 'var(--home-dark)' }
@@ -62,10 +65,15 @@ const dim = computed(() => (props.player.hasMoved && props.player.hasActed ? 0.5
       stroke-width="1.5"
       stroke-dasharray="4 5"
     />
-    <!-- indicador de posesión -->
-    <g v-if="isCarrier">
-      <circle :cx="TOKEN_R * 0.9" :cy="-TOKEN_R * 0.9" r="6.5" fill="#fff" stroke="#222" stroke-width="2" />
-      <circle :cx="TOKEN_R * 0.9" :cy="-TOKEN_R * 0.9" r="2.6" fill="#222" />
+    <!-- indicador de posesión: balón mini grande y legible -->
+    <g v-if="isCarrier" class="mini-ball" pointer-events="none">
+      <circle :cx="mbX" :cy="mbY + 2" r="10.5" fill="rgba(0,0,0,0.35)" />
+      <circle :cx="mbX" :cy="mbY" r="9.5" fill="#fdfdfd" stroke="#181818" stroke-width="1.5" />
+      <path
+        d="M 0 -3.6 L 3.4 -1.1 L 2.1 2.9 L -2.1 2.9 L -3.4 -1.1 Z"
+        :transform="`translate(${mbX},${mbY + 1.3})`"
+        fill="#181818"
+      />
     </g>
   </g>
 </template>

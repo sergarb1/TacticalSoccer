@@ -11,8 +11,8 @@ const emit = defineEmits<{
 const savedAiLevel = ref<'easy' | 'normal' | 'hard'>('normal');
 const homeId = ref('sur');
 const awayId = ref('norte');
-const homeFormation = ref('4-4-2');
-const awayFormation = ref('4-3-3');
+const homeFormation = ref('1-2-1');
+const awayFormation = ref('2-1-1');
 const mode = ref<'hotseat' | 'ai'>('ai');
 const aiLevel = ref<'easy' | 'normal' | 'hard'>(savedAiLevel.value);
 

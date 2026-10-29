@@ -9,8 +9,8 @@ import { TURNS_PER_HALF, AP_PER_TURN } from '../src/game/config';
 import { Stream, randomStep } from '../src/game/rng';
 
 const cfg: MatchConfig = {
-  home: { teamId: 'sur', formation: '4-4-2' },
-  away: { teamId: 'norte', formation: '4-3-3' },
+  home: { teamId: 'sur', formation: '1-2-1' },
+  away: { teamId: 'norte', formation: '2-1-1' },
   mode: 'hotseat',
   aiTeam: null,
   aiLevel: 'normal',
@@ -31,13 +31,13 @@ function ballPlayerId(s: GameState): number {
 }
 
 describe('inicio de partida', () => {
-  it('crea 22 jugadores, 11 por equipo, en casillas únicas', () => {
+  it('crea 10 jugadores, 5 por equipo, en casillas únicas', () => {
     const s = fresh();
-    expect(s.players).toHaveLength(22);
-    expect(s.players.filter((p) => p.team === 0)).toHaveLength(11);
-    expect(s.players.filter((p) => p.team === 1)).toHaveLength(11);
+    expect(s.players).toHaveLength(10);
+    expect(s.players.filter((p) => p.team === 0)).toHaveLength(5);
+    expect(s.players.filter((p) => p.team === 1)).toHaveLength(5);
     const uniq = new Set(s.players.map((p) => `${p.pos.col},${p.pos.row}`));
-    expect(uniq.size).toBe(22);
+    expect(uniq.size).toBe(10);
   });
 
   it('empieza con el equipo local, 3 AP y balón suelto en el centro', () => {
@@ -45,7 +45,7 @@ describe('inicio de partida', () => {
     expect(s.currentTeam).toBe(0);
     expect(s.ap).toBe(AP_PER_TURN);
     expect(s.ball.carrier).toBeNull();
-    expect(s.ball.pos).toEqual({ col: 7, row: 4 });
+    expect(s.ball.pos).toEqual({ col: 4, row: 2 });
     expect(s.phase).toBe('playing');
   });
 
@@ -72,11 +72,9 @@ describe('alternancia de turnos y AP', () => {
   it('las acciones consumen AP', () => {
     const s = fresh();
     const id = ballPlayerId(s);
-    const dest = { col: s.ball.pos.col - 1 + 0, row: 4 };
-    const r = doMove(s, id, s.ball.pos);
+  const r = doMove(s, id, s.ball.pos);
     expect(r.ok).toBe(true);
     expect(s.ap).toBe(AP_PER_TURN - 1);
-    void dest;
   });
 
   it('no se puede actuar fuera de turno', () => {
@@ -108,9 +106,9 @@ describe('movimiento', () => {
     const s = fresh();
     const p = s.players.find((q) => q.team === s.currentTeam && q.role === 'MC')!;
     const r = reachable(s, p);
-    // MC con velocidad 5-7: alcance 2-3 en Chebyshev
+    // con velocidad 5-7: alcance 2-3 en Chebyshev (1 + velocidad/4)
     const maxDist = Math.max(...[...r.paths.values()].map((path) => Math.abs(path.at(-1)!.col - p.pos.col) + 0));
-    expect(maxDist).toBeLessThanOrEqual(1 + Math.floor(p.stats.speed / 3));
+    expect(maxDist).toBeLessThanOrEqual(1 + Math.floor(p.stats.speed / 4));
   });
 
   it('no permite mover a una casilla ocupada', () => {
@@ -204,7 +202,7 @@ describe('disparos y goles', () => {
   function prepareShooter(s: GameState): { state: GameState; shooter: number } {
     // Coloca el portador pegado al arco rival mediante posesión directa de prueba.
     const shooter = s.players.find((p) => p.team === s.currentTeam && p.role === 'DC')!;
-    shooter.pos = { col: s.currentTeam === 0 ? 13 : 1, row: 5 };
+    shooter.pos = { col: s.currentTeam === 0 ? 7 : 1, row: 2 };
     s.ball.carrier = shooter.id;
     s.ball.pos = { ...shooter.pos };
     return { state: s, shooter: shooter.id };
@@ -237,7 +235,7 @@ describe('disparos y goles', () => {
     // tras el gol, recolocación: un equipo acudió al saque y le toca (el que encajó)
     expect(s.currentTeam).toBe(1);
     expect(s.ball.carrier).toBeNull();
-    expect(s.ball.pos).toEqual({ col: 7, row: 4 });
+    expect(s.ball.pos).toEqual({ col: 4, row: 2 });
   });
 
   it('la parada da el balón al portero rival', () => {
@@ -270,11 +268,11 @@ describe('disparos y goles', () => {
 describe('robos de balón', () => {
   function prepareSteal(s: GameState): { state: GameState; defender: number; victim: number } {
     const victim = s.players.find((p) => p.team === 0 && p.role === 'DC')!;
-    victim.pos = { col: 10, row: 5 };
+    victim.pos = { col: 6, row: 3 };
     s.ball.carrier = victim.id;
     s.ball.pos = { ...victim.pos };
     const defender = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
-    defender.pos = { col: 11, row: 5 };
+    defender.pos = { col: 7, row: 3 };
     return { state: s, defender: defender.id, victim: victim.id };
   }
 

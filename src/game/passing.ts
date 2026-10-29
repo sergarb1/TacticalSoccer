@@ -1,7 +1,7 @@
 /**
  * Pases: alcance, probabilidad de éxito y resolución con interceptaciones.
  */
-import { PROB, PRESSURE_CAP } from './config';
+import { PROB, PRESSURE_CAP, passRange } from './config';
 import { cheby, distToSegment, clampCell } from './field';
 import { pressureAt, enemyOf, teamPlayers, playerById } from './rules';
 import type { Cell, GameState, Player, SoundName } from './types';
@@ -43,7 +43,7 @@ export function passChance(state: GameState, passer: Player, target: Player): nu
 /** Compañeros receptor válidos, ordenados por dorsal, con % de éxito. */
 export function passOptionsFor(state: GameState, passer: Player): PassOption[] {
   const options: PassOption[] = [];
-  const maxDist = 4 + Math.floor(passer.stats.pass / 2);
+  const maxDist = passRange(passer.stats.pass);
   for (const t of teamPlayers(state, passer.team).filter((p) => p.id !== passer.id)) {
     const dist = cheby(passer.pos, t.pos);
     if (dist > maxDist) continue;

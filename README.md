@@ -63,8 +63,9 @@ subcarpeta sin configuración adicional.
 
 # 🕹️ Cómo se juega
 
-El partido se disputa sobre un **campo de 15×10 casillas**. Cada equipo tiene
-**11 futbolistas** (portero incluido) representados por fichas circulares:
+El partido se disputa sobre un **campo de 9×5 casillas con vista isométrica**:
+una cuadrícula de rombos de césped, más compacta y táctica que el fútbol clásico,
+con **5 jugadores por equipo** (portero + 4 de campo):
 **rojo (local, ataca a la derecha)** contra **azul (visitante, ataca a la izquierda)**.
 
 ### Puntos de acción (PA)
@@ -100,6 +101,10 @@ Reglas importantes:
 3. El **minimapa** también permite seleccionar fichas.
 
 El partido se guarda automáticamente tras cada acción; puedes **continuar** desde el menú.
+
+Además, la **barra de consejos** bajo el tablero te dice en cada momento qué
+puedes hacer (mover, pasar, robar, ir al balón suelto…), y desde el menú puedes
+lanzar un **tutorial guiado de 7 pasos**.
 
 ---
 
