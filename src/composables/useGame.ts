@@ -3,7 +3,7 @@
  * toda regla vive en src/game; aquí solo se coordina selección, modos de
  * interacción, la ejecución de la IA, sonidos, guardado y animaciones.
  */
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import {
   createMatch, doMove, doPass, doShoot, doSteal, doCut, doHack, endTurn, teamLabel
 } from '../game/match';
@@ -14,6 +14,7 @@ import { stealChance, stealTargets, cutTargets, hackTargets } from '../game/defe
 import { CUT_RANGE, HACK_RANGE, HACK_BONUS } from '../game/config';
 import { getPlayer } from '../game/rules';
 import { playSound } from '../game/sounds';
+import { startMusic, stopMusic, setMusicVolume } from '../game/music';
 import { saveMatch, clearSavedMatch, loadSavedMatch } from '../game/serialize';
 import { useSettings } from './useSettings';
 import { nextAiAction } from '../ai/strategy';
@@ -56,6 +57,21 @@ function pushLine(text: string, kind: Line['kind']): void {
 export const game = g;
 
 const settings = useSettings();
+
+/* Música de fondo: reacciona al ajuste y al volumen en caliente. */
+watch(
+  () => settings.music,
+  (on) => {
+    if (on && g.state.value) startMusic(settings.volume);
+    else if (!on) stopMusic();
+  }
+);
+watch(
+  () => settings.volume,
+  (v) => {
+    if (settings.music && g.state.value) setMusicVolume(v);
+  }
+);
 
 function soundOpt(): { enabled: boolean; volume: number } {
   return { enabled: settings.sound, volume: settings.volume };
@@ -118,6 +134,7 @@ export function moveHighlights(): Cell[] {
 export function startMatch(cfg: MatchConfig): void {
   clearSavedMatch();
   g.state.value = createMatch(cfg);
+  if (settings.music) startMusic(settings.volume);
   g.ui.selectedId = null;
   g.ui.mode = 'idle';
   g.ui.gameOver = false;
@@ -373,6 +390,7 @@ export function finishTurn(): boolean {
   if (phaseAfter === 'fulltime') {
     g.ui.gameOver = true;
     clearSavedMatch();
+    stopMusic();
     return true;
   }
   g.ui.turnBanner = teamLabel(s, s.currentTeam);

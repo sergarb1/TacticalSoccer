@@ -77,6 +77,8 @@ const shotKinds: ShotKind[] = ['normal', 'billetes', 'vaselina'];
 const shotCost = (k: ShotKind): number => SHOT_COST[k];
 const shotLabel = (k: ShotKind): string => SHOT_LABEL[k];
 const shotDesc = (k: ShotKind): string | null => props.shotReads?.[k]?.description ?? null;
+/** Iconos de tiro y acciones para leer el panel de un vistazo. */
+const SHOT_ICONS: Record<ShotKind, string> = { normal: '⚽', billetes: '💸', vaselina: '🕊️' };
 </script>
 
 <template>
@@ -106,7 +108,7 @@ const shotDesc = (k: ShotKind): string | null => props.shotReads?.[k]?.descripti
             :disabled="!canShoot(k)"
             @click="emit('shoot', k)"
           >
-            {{ shotLabel(k) }} ({{ shotCost(k) }} PA) · {{ shotReads?.[k]?.goal ?? 0 }}%
+            {{ SHOT_ICONS[k] }} {{ shotLabel(k) }} ({{ shotCost(k) }} PA) · {{ shotReads?.[k]?.goal ?? 0 }}%
           </button>
           <button class="ghost" @click="emit('shoot-cancel')">Cancelar</button>
         </div>
@@ -133,7 +135,7 @@ const shotDesc = (k: ShotKind): string | null => props.shotReads?.[k]?.descripti
       <div class="chips">
         <button v-if="(stealOptions ?? []).length === 0" disabled>No hay rivales con balón a la vista</button>
         <button v-for="o in stealOptions ?? []" :key="o.victimId" @click="emit('steal', o.victimId)">
-          Robar a {{ o.name }} ({{ o.chance }}%)
+          🧤 Robar a {{ o.name }} ({{ o.chance }}%)
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
@@ -144,7 +146,7 @@ const shotDesc = (k: ShotKind): string | null => props.shotReads?.[k]?.descripti
       <div class="chips">
         <button v-if="(cutOptions ?? []).length === 0" disabled>Ningún rival con balón al alcance del corte</button>
         <button v-for="o in cutOptions ?? []" :key="o.carrierId" @click="emit('cut', o.carrierId)">
-          Plantarse ante {{ o.name }} (a {{ o.dist }} casilla/s)
+          🛡️ Plantarse ante {{ o.name }} (a {{ o.dist }} casilla/s)
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
@@ -165,12 +167,12 @@ const shotDesc = (k: ShotKind): string | null => props.shotReads?.[k]?.descripti
     <!-- acciones base -->
     <template v-else>
       <div class="buttons">
-        <button :disabled="!canAct || !selected || selected.hasMoved" @click="emit('move')">Mover (1)</button>
-        <button :disabled="!canAct || !hasBall || !selected || selected.hasActed" @click="emit('pass-mode')">Pasar (1)</button>
-        <button :disabled="!canShoot('normal')" @click="emit('shoot-arm')">Chutar (1)</button>
-        <button :disabled="!canAct || hasBall || !isOwn || !selected || selected.hasActed" @click="emit('steal-mode')">Robar (1)</button>
+        <button :disabled="!canAct || !selected || selected.hasMoved" @click="emit('move')">👟 Mover (1)</button>
+        <button :disabled="!canAct || !hasBall || !selected || selected.hasActed" @click="emit('pass-mode')">➡️ Pasar (1)</button>
+        <button :disabled="!canShoot('normal')" @click="emit('shoot-arm')">⚽ Chutar (1)</button>
+        <button :disabled="!canAct || hasBall || !isOwn || !selected || selected.hasActed" @click="emit('steal-mode')">🧤 Robar (1)</button>
         <button :disabled="!canHack" @click="emit('hack-mode')">⚡ Hachazo</button>
-        <button :disabled="!canAct || hasBall || !isOwn || !selected || selected.hasActed" @click="emit('cut-mode')">Cortar (1)</button>
+        <button :disabled="!canAct || hasBall || !isOwn || !selected || selected.hasActed" @click="emit('cut-mode')">🛡️ Cortar (1)</button>
         <button class="primary end-turn" :disabled="state.phase !== 'playing'" @click="emit('end-turn')">⏭ Terminar turno</button>
       </div>
     </template>

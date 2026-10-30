@@ -18,7 +18,7 @@ onUnmounted(() => window.clearInterval(timer));
 </script>
 
 <template>
-  <footer class="comm-bar" aria-live="polite">
+  <footer class="comm-bar" aria-live="polite" role="status">
     <div class="comm-minute">
       <span class="comm-ratio">📻 RETRANSMISIÓN</span>
       <strong class="comm-min">{{ minute }}'</strong>
@@ -36,15 +36,15 @@ onUnmounted(() => window.clearInterval(timer));
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: 0;
   z-index: 40;
   display: flex;
   align-items: center;
   gap: 0.9rem;
-  padding: 0.55rem 1rem calc(0.55rem + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(10, 22, 15, 0.96), rgba(6, 14, 10, 0.98));
-  border-top: 2px solid rgba(232, 184, 63, 0.5);
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
+  padding: calc(0.55rem + env(safe-area-inset-top)) 1rem 0.55rem;
+  background: linear-gradient(0deg, rgba(10, 22, 15, 0.96), rgba(6, 14, 10, 0.98));
+  border-bottom: 2px solid rgba(232, 184, 63, 0.5);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   max-width: 1100px;
   margin: 0 auto;
 }

@@ -4,6 +4,7 @@ import { reachable, cellKey } from '../src/game/movement';
 import { passOptionsFor, passChance } from '../src/game/passing';
 import { readShot } from '../src/game/shooting';
 import { serializeMatch, validateMatch } from '../src/game/serialize';
+import { stealChance } from '../src/game/defense';
 import type { GameState, MatchConfig } from '../src/game/types';
 import { TURNS_PER_HALF, AP_PER_TURN } from '../src/game/config';
 import { Stream, randomStep } from '../src/game/rng';
@@ -452,3 +453,57 @@ function seedBetween(s: GameState, lo: number, hi: number, map: (v: number) => n
   }
   throw new Error('sin semilla en el rango');
 }
+
+describe('cadena tras el robo', () => {
+  it('robar con éxito deja actuar de nuevo: con PA restantes se pasa y se chuta', () => {
+    const s = fresh();
+    // víctima roja con el balón pegada a un azul, y turno para el azul
+    const vic = s.players.find((p) => p.team === 0 && p.role === 'DC')!;
+    const ladr = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
+    const mate = s.players.find((p) => p.team === 1 && p.role === 'MC')!;
+    vic.pos = { col: 6, row: 3 };
+    ladr.pos = { col: 7, row: 3 };
+    mate.pos = { col: 8, row: 3 };
+    s.ball.carrier = vic.id;
+    s.ball.pos = { ...vic.pos };
+    endTurn(s);
+
+    // semilla que da éxito en el robo (la probabilidad real va de sobra)
+    s.rng = seedBetween(s, 0, Math.max(1, stealChance(s, ladr, vic)), (v) => v);
+    const rob = doSteal(s, ladr.id, vic.id);
+    expect(rob.ok).toBe(true);
+    expect(s.ball.carrier).toBe(ladr.id);
+    // el ladrón vuelve a estar disponible: puede pasar o chutar si hay PA
+    expect(ladr.hasActed).toBe(false);
+    expect(s.ap).toBe(2);
+
+    s.rng = seedBetween(s, 0, Math.max(1, passChance(s, ladr, mate)), (v) => v);
+    const pase = doPass(s, ladr.id, mate.id);
+    expect(pase.ok).toBe(true);
+    expect(s.ball.carrier).toBe(mate.id);
+
+    const chute = doShoot(s, mate.id);
+    expect(chute.ok).toBe(true);
+  });
+
+  it('robar falla no deja actuar de nuevo (gasta el turno de acción)', () => {
+    const s = fresh();
+    const vic = s.players.find((p) => p.team === 0 && p.role === 'DC')!;
+    const ladr = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
+    vic.pos = { col: 6, row: 3 };
+    ladr.pos = { col: 7, row: 3 };
+    s.ball.carrier = vic.id;
+    s.ball.pos = { ...vic.pos };
+    endTurn(s);
+    // semilla de fracaso: probabilidad real y por encima la tirada
+    const chance = stealChance(s, ladr, vic);
+    s.rng = seedBetween(s, Math.min(99, chance + 1), 100, (v) => v);
+    const rob = doSteal(s, ladr.id, vic.id);
+    expect(rob.ok).toBe(true);
+    expect(s.ball.carrier).toBe(vic.id);
+    expect(ladr.hasActed).toBe(true);
+    const mate = s.players.find((p) => p.team === 1 && p.role === 'MC')!;
+    const pase = doPass(s, ladr.id, mate.id);
+    expect(pase.ok).toBe(false);
+  });
+});

@@ -37,6 +37,12 @@ const volumePercent = computed({
           Efectos de sonido
         </label>
       </div>
+      <div class="setting-row">
+        <label>
+          <input type="checkbox" v-model="settings.music" />
+          Música de fondo (estadio)
+        </label>
+      </div>
       <div class="setting-row volume">
         <span>Volumen</span>
         <input type="range" min="0" max="100" v-model.number="volumePercent" />

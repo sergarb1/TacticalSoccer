@@ -19,6 +19,7 @@ import {
   moveHighlights
 } from './composables/useGame';
 import type { ShotKind } from './game/types';
+import { stopMusic } from './game/music';
 import { useSettings } from './composables/useSettings';
 import { passOptionsFor } from './game/passing';
 import { getPlayer } from './game/rules';
@@ -113,6 +114,7 @@ function onResume(): void {
 }
 
 function quitToMenu(): void {
+  stopMusic(); // la cobertura de fondo se apaga al volver al menú
   screen.value = 'menu';
   paused.value = false;
   setupTutorial.value = false;
@@ -244,6 +246,7 @@ function endTutorial(): void {
     <MatchSetup v-else-if="screen === 'setup'" @start="onStart" @back="screen = 'menu'" />
 
     <div v-else-if="state" class="game-screen">
+      <CommentaryBar :state="state" />
       <Scoreboard :state="state" @pause="paused = true" />
 
       <div class="game-layout">
@@ -310,8 +313,6 @@ function endTutorial(): void {
         </div>
       </div>
 
-      <CommentaryBar :state="state" />
-
       <TurnBanner
         :text="ui.turnBanner ?? null"
         kind="turn"
@@ -351,7 +352,8 @@ function endTutorial(): void {
 .game-screen {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0.6rem 0.8rem 3.4rem; /* hueco para la barra de narración fija */
+  /* hueco arriba para la narración fija (arriba) y abajo por el botón salir */
+  padding: calc(4.3rem + env(safe-area-inset-top)) 0.8rem 1rem;
   display: grid;
   gap: 0.55rem;
 }
@@ -398,7 +400,7 @@ function endTutorial(): void {
   .side-col > .minimap,
   .side-col > .mini-stats { display: none; }
   .board-col { order: -1; }
-  .game-screen { padding: 0.5rem 0.5rem 3.2rem; gap: 0.5rem; }
+  .game-screen { padding: calc(3.9rem + env(safe-area-inset-top)) 0.5rem 1rem; gap: 0.5rem; }
   .board-svg { max-height: 62vh; }
 }
 </style>

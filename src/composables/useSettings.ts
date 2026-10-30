@@ -6,6 +6,8 @@ import { STORAGE_KEYS } from '../game/config';
 
 export interface Settings {
   sound: boolean;
+  /** Música de fondo de ambiente de estadio. */
+  music: boolean;
   volume: number; // 0..1
   animations: boolean;
   haptics: boolean;
@@ -15,6 +17,7 @@ export interface Settings {
 
 const DEFAULTS: Settings = {
   sound: true,
+  music: true,
   volume: 0.7,
   animations: true,
   haptics: true,
@@ -29,6 +32,7 @@ function load(): Settings {
     const parsed = JSON.parse(raw) as Partial<Settings>;
     return {
       sound: typeof parsed.sound === 'boolean' ? parsed.sound : DEFAULTS.sound,
+      music: typeof parsed.music === 'boolean' ? parsed.music : DEFAULTS.music,
       volume: typeof parsed.volume === 'number' ? Math.min(1, Math.max(0, parsed.volume)) : DEFAULTS.volume,
       animations: typeof parsed.animations === 'boolean' ? parsed.animations : DEFAULTS.animations,
       haptics: typeof parsed.haptics === 'boolean' ? parsed.haptics : DEFAULTS.haptics,

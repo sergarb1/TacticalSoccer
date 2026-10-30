@@ -101,6 +101,8 @@ const goalHintPos = computed(() => {
   <div class="board-wrap">
     <svg :viewBox="`0 0 ${VB_W} ${VB_H}`" class="board-svg" role="img" aria-label="Campo de fútbol isométrico" @click="onSvgClick">
       <defs>
+        <!-- clip del balón para que los pentágonos no salgan del círculo -->
+        <clipPath id="ballClip"><circle r="9.6" /></clipPath>
         <radialGradient id="ballShine" cx="0.35" cy="0.3" r="0.75">
           <stop offset="0" stop-color="#ffffff" stop-opacity="0.95" />
           <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.15" />
@@ -155,6 +157,18 @@ const goalHintPos = computed(() => {
           <g stroke="rgba(240,248,244,0.45)" stroke-width="1" vector-effect="non-scaling-stroke">
             <line v-for="n in 3" :key="`nvR${n}`" :x1="C + (n * 0.45) / 4" :y1="GOAL_CENTER_ROW" :x2="C + (n * 0.45) / 4" :y2="GOAL_CENTER_ROW + 1" vector-effect="non-scaling-stroke" />
             <line v-for="n in 2" :key="`nhR${n}`" :x1="C" :y1="GOAL_CENTER_ROW + n / 3" :x2="C + 0.45" :y2="GOAL_CENTER_ROW + n / 3" vector-effect="non-scaling-stroke" />
+          </g>
+        </g>
+
+        <!-- banderines de córner en las cuatro esquinas -->
+        <g stroke="rgba(244,249,244,0.95)" stroke-width="1.6" vector-effect="non-scaling-stroke">
+          <g v-for="(corner, i) in [[0, 0], [C, 0], [0, R], [C, R]]" :key="`flag-${i}`">
+            <line :x1="corner[0]" :y1="corner[1]" :x2="corner[0]" :y2="corner[1] - 0.85" vector-effect="non-scaling-stroke" />
+            <polygon
+              :points="`${corner[0]},${corner[1] - 0.85} ${corner[0] + 0.55},${corner[1] - 0.6} ${corner[0]},${corner[1] - 0.35}`"
+              fill="var(--gold)"
+              stroke="none"
+            />
           </g>
         </g>
 
@@ -267,13 +281,30 @@ const goalHintPos = computed(() => {
         stroke-dasharray="7 6"
       />
 
-      <!-- balón (grande, con sombra y brillo; el vuelo se traslada suave) -->
+      <!-- balón (grande, con costuras clásicas y brillo; el vuelo se traslada suave) -->
       <g v-if="showGroundBall" class="ball-g" :class="{ fly: ballFx !== null }" pointer-events="none">
         <g :transform="`translate(${ballPos.x},${ballPos.y - 24})`">
           <ellipse cy="26" rx="10" ry="4.6" fill="rgba(0,0,0,0.45)" />
           <circle r="10.5" fill="#fdfdfd" stroke="#181818" stroke-width="1.6" />
+          <!-- costuras clásicas: pentágono central + parches alrededor, recortados -->
+          <g clip-path="url(#ballClip)">
+            <g fill="#1f2126">
+              <path d="M0 -3.4 L3.2 -1.05 L2 2.7 L-2 2.7 L-3.2 -1.05 Z" transform="translate(0,1)" />
+              <path d="M0 -3.4 L3.2 -1.05 L2 2.7 L-2 2.7 L-3.2 -1.05 Z" transform="translate(0,-10.2) scale(0.9)" />
+              <path d="M0 -3.4 L3.2 -1.05 L2 2.7 L-2 2.7 L-3.2 -1.05 Z" transform="translate(8.6,-4.4) rotate(72) scale(0.9)" />
+              <path d="M0 -3.4 L3.2 -1.05 L2 2.7 L-2 2.7 L-3.2 -1.05 Z" transform="translate(9.4,5.4) rotate(144) scale(0.9)" />
+              <path d="M0 -3.4 L3.2 -1.05 L2 2.7 L-2 2.7 L-3.2 -1.05 Z" transform="translate(-9.4,5.4) rotate(216) scale(0.9)" />
+              <path d="M0 -3.4 L3.2 -1.05 L2 2.7 L-2 2.7 L-3.2 -1.05 Z" transform="translate(-8.6,-4.4) rotate(288) scale(0.9)" />
+            </g>
+            <g stroke="rgba(24,24,24,0.55)" stroke-width="0.8" fill="none">
+              <line x1="0" y1="-2.5" x2="0" y2="-9" />
+              <line x1="2.9" y1="-1" x2="9" y2="-4.2" />
+              <line x1="1.9" y1="3.3" x2="8.6" y2="5.6" />
+              <line x1="-1.9" y1="3.3" x2="-8.6" y2="5.6" />
+              <line x1="-2.9" y1="-1" x2="-9" y2="-4.2" />
+            </g>
+          </g>
           <circle r="10.5" fill="url(#ballShine)" />
-          <path d="M 0 -4 L 3.8 -1.2 L 2.3 3.2 L -2.3 3.2 L -3.8 -1.2 Z" transform="translate(0,1.4)" fill="#181818" />
         </g>
       </g>
     </svg>
