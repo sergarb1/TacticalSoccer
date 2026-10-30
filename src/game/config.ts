@@ -97,6 +97,16 @@ export const HACK_BONUS = 25;
 /** El equipo que endurece roba mejor durante el turno rival (+%). */
 export const HARDEN_STEAL_BONUS = 12;
 /** Peso extra de tapones de tiro de un equipo endurecido. */
+/**
+ * Castigo por portero despistado: si el guardameta está a FAR_KEEPER_FROM
+ * casillas o más de la boca de su arco (Chebyshev), cada casilla extra
+ * regala FAR_KEEPER_BONUS puntos de gol al rival (tope FAR_KEEPER_CAP).
+ * Así conviene tener al portero pegado a casa.
+ */
+export const FAR_KEEPER_FROM = 2;
+export const FAR_KEEPER_BONUS = 6;
+export const FAR_KEEPER_CAP = 18;
+
 export const HARDEN_BLOCK_WEIGHT = 0.8;
 /** Bonus a interceptar pases de un equipo endurecido (plantado a cortar). */
 export const HARDEN_INTERCEPT_CUT = 8;

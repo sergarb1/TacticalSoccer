@@ -24,9 +24,12 @@ import { useSettings } from './useSettings';
 import { nextAiAction, nextAiPenaltyAction, aiControlsTeam } from '../ai/strategy';
 import type { AiDecision } from '../ai/strategy';
 import { commentaryForEvent, ambientLine, type Line } from '../game/commentary';
-import type { Cell, GameEvent, GameState, MatchConfig, Phase, ShotKind } from '../game/types';
+import type { Cell, GameEvent, GameState, MatchConfig, Phase, ShotKind, TeamId } from '../game/types';
 
 export type InteractionMode = 'idle' | 'moving' | 'passing' | 'stealing' | 'shooting' | 'cutting' | 'hacking';
+
+/** Modalidades del modal de especiales. */
+type SpecialFxKind = 'billetes' | 'vaselina' | 'hachazo';
 
 export interface UiState {
   selectedId: number | null;
@@ -49,6 +52,10 @@ const g = {
   highlightCells: ref<Cell[]>([]),
   /** Balón visual en vuelo (para disparos). */
   ballFx: ref<{ target: Cell; until: number } | null>(null),
+  /** Banner dramático de la tanda de penaltis. */
+  penaltyBanner: ref<{ text: string; team: TeamId | null; kind: 'goal' | 'info' } | null>(null),
+  /** Modal animado de acción especial (Tiro Billetes, Vaselina, Hachazo). */
+  specialFx: ref<{ kind: SpecialFxKind; icon: string; title: string; sub: string } | null>(null),
   /** Últimas frases del narrador (la [0] es la más reciente). */
   commentary: ref<Line[]>([])
 };
@@ -99,11 +106,67 @@ export function haptic(pattern: number | number[]): void {
   vibrate(pattern);
 }
 
+/** Etiquetas del modal de especiales (icono, título y subtítulo). */
+const SPECIAL_FX: Record<SpecialFxKind, { icon: string; title: string; sub: string }> = {
+  billetes: { icon: '💸', title: 'TIRO BILLETES', sub: '¡Faro de billetes directo a la red: riesgo y gloria a partes iguales!' },
+  vaselina: { icon: '🕊️', title: 'VASELINA', sub: 'El balón se va por arriba: o es golazo del año o risa del estadio.' },
+  hachazo: { icon: '⚡', title: 'HACHAZO', sub: '¡A por el balón con guantazo! Roba con más garra y desde más lejos.' }
+};
+
+let specialFxTimer: number | null = null;
+/** Lanza el modal animado de la acción especial (se autodisuelve). */
+function showSpecialFx(kind: 'billetes' | 'vaselina' | 'hachazo'): void {
+  const fx = SPECIAL_FX[kind];
+  if (!fx) return;
+  if (specialFxTimer !== null) window.clearTimeout(specialFxTimer);
+  g.specialFx.value = { kind, ...fx };
+  specialFxTimer = window.setTimeout(() => {
+    g.specialFx.value = null;
+    specialFxTimer = null;
+  }, 2200);
+}
+
+/** Muestra el banner de tanda y lo oculta al rato. */
+function flashPenaltyBanner(b: { text: string; team: TeamId | null; kind: 'goal' | 'info' }): void {
+  g.penaltyBanner.value = b;
+  window.setTimeout(() => (g.penaltyBanner.value = null), 2800);
+}
+
+/** Equipo de un jugador del estado (para colorear el banner de tanda). */
+function teamOfPlayer(id: number): TeamId | null {
+  const s = g.state.value;
+  if (!s) return null;
+  return s.players.find((p) => p.id === id)?.team ?? null;
+}
+
 /** Consume los eventos del motor para sonidos, animaciones y narración. */
 function applyEvents(events: GameEvent[]): void {
   const s = g.state.value;
   for (const e of events) {
     if (e.type === 'sound') playSound(e.name, soundOpt());
+    // modal de acción especial: tiros especiales y hachazo
+    if (e.type === 'shot' && e.kind !== 'normal') showSpecialFx(e.kind);
+    if (e.type === 'steal' && e.hachazo) showSpecialFx('hachazo');
+    // drama de la tanda: banner grande por lanzamiento y desenlace
+    if (e.type === 'penalty') {
+      if (e.outcome === 'pending') {
+        flashPenaltyBanner({ text: '⚽ ¡PENALTI!', team: null, kind: 'info' });
+      } else if (e.outcome === 'scored') {
+        const t = teamOfPlayer(e.shooterId);
+        flashPenaltyBanner({ text: t === 0 ? 'GOL DE PENALTI · ROJOS' : 'GOL DE PENALTI · AZULES', team: t, kind: 'goal' });
+      } else {
+        const kt = teamOfPlayer(e.keeperId);
+        flashPenaltyBanner({ text: '🧤 ¡PARADÓN! SE LA SACA EL PORTERO', team: kt, kind: 'goal' });
+      }
+    }
+    if (e.type === 'fulltime' && s && s.penaltyWinner !== null) {
+      const w = s.penaltyWinner;
+      flashPenaltyBanner({
+        text: w === 0 ? '¡LA TANDA DECIDE! GANAN LOS ROJOS 🏆' : '¡LA TANDA DECIDE! GANAN LOS AZULES 🏆',
+        team: w,
+        kind: 'goal'
+      });
+    }
     // vibración según el tipo de evento (gol/parada/robo tienen patrón propio)
     if (e.type === 'sound') {
       if (e.name === 'goal') vibrate([80, 60, 140]);

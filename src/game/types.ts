@@ -161,7 +161,8 @@ export type GameEvent =
 export type ShotOutcome = 'goal' | 'save' | 'off' | 'block' | 'rebound';
 export type SoundName =
   | 'move' | 'pass' | 'passFail' | 'shot' | 'shotSpecial' | 'goal' | 'save'
-  | 'steal' | 'stealFail' | 'cut' | 'turn' | 'pickup' | 'kickoff' | 'fulltime';
+  | 'steal' | 'stealFail' | 'cut' | 'turn' | 'pickup' | 'kickoff' | 'fulltime'
+  | 'whistle' | 'groan' | 'fanfare';
 
 /** Resultado estándar de una acción del motor. */
 export interface ActionResult {

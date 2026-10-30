@@ -13,6 +13,7 @@ import TurnBanner from './components/TurnBanner.vue';
 import TutorialOverlay from './components/TutorialOverlay.vue';
 import CommentaryBar from './components/CommentaryBar.vue';
 import CupScreen from './components/CupScreen.vue';
+import SpecialFx from './components/SpecialFx.vue';
 import {
   game, startMatch, tryResume, selectPlayer, boardCellClick, boardTokenClick,
   actionMove, actionPass, actionShotArm, actionShotConfirm, actionSteal, actionCut,
@@ -37,6 +38,11 @@ const state = computed(() => game.state.value);
 const ui = game.ui;
 const cupCtl = useCup();
 const boardHighlights = computed(() => moveHighlights());
+
+/* ------- drama de la tanda: banner propio ------- */
+const penaltyBanner = computed(() => game.penaltyBanner.value);
+/* ------- modal de especiales ------- */
+const specialFx = computed(() => game.specialFx.value);
 
 /* ------- datos de la tanda para el panel ------- */
 const penaltyUi = computed<PenaltyUi>(() => ({
@@ -366,11 +372,26 @@ function endTutorial(): void {
         :team="state.currentTeam"
       />
       <TurnBanner
-        v-if="goalBanner"
+        v-if="goalBanner && !penaltyBanner"
         :text="goalBanner.text"
         kind="goal"
         :big="true"
         :team="goalBanner.team"
+      />
+      <TurnBanner
+        v-if="penaltyBanner"
+        :text="penaltyBanner.text"
+        :kind="penaltyBanner.kind"
+        :big="penaltyBanner.kind === 'goal'"
+        :team="penaltyBanner.team"
+      />
+
+      <SpecialFx
+        v-if="specialFx"
+        :kind="specialFx.kind"
+        :icon="specialFx.icon"
+        :title="specialFx.title"
+        :sub="specialFx.sub"
       />
 
       <TutorialOverlay

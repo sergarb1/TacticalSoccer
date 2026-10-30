@@ -171,7 +171,7 @@ export function enterPenalties(state: GameState): GameEvent[] {
   state.penaltyWinner = null;
   state.harden = [false, false];
   setupPenaltyKick(state, 0, events);
-  events.push({ type: 'sound', name: 'kickoff' });
+  events.push({ type: 'sound', name: 'whistle' }); // ¡silbato! a la tanda
   return events;
 }
 
@@ -220,7 +220,7 @@ function finishShootout(state: GameState, winner: TeamId, events: GameEvent[]): 
   state.phase = 'fulltime';
   state.message = `La tanda decide: gana el ${matchLabel(winner)} por penaltis (${state.penaltyKicks[0]}-${state.penaltyKicks[1]}).`;
   events.push({ type: 'fulltime' });
-  events.push({ type: 'sound', name: 'fulltime' });
+  events.push({ type: 'sound', name: 'fanfare' });
 }
 
 /** Registra el desenlace de un lanzamiento y prepara el siguiente. */
@@ -257,6 +257,7 @@ function settleMiss(state: GameState, events: GameEvent[]): void {
   events.push({ type: 'penalty', shooterId: shooter.id, keeperId: keeper.id, outcome: 'stopped' });
   events.push({ type: 'penaltyKick', team, scored: false, decided: false });
   events.push({ type: 'sound', name: 'save' });
+  events.push({ type: 'sound', name: 'groan' }); // el estadio se desploma
 
   const winner = decidedWinner(state);
   if (winner !== null) {

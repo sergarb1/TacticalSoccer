@@ -6,7 +6,7 @@
  * se han plantado a cortar (postura 'cut').
  * Módulo puro: modifica el GameState que recibe y devuelve el desenlace.
  */
-import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP, SHOT_LABEL, HARDEN_BLOCK_WEIGHT } from './config';
+import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP, SHOT_LABEL, HARDEN_BLOCK_WEIGHT, FAR_KEEPER_BONUS, FAR_KEEPER_CAP, FAR_KEEPER_FROM } from './config';
 import { euclid, inField } from './field';
 import { enemyOf, isOccupied } from './rules';
 import type { Cell, GameState, Player, ShotKind, ShotOutcome, SoundName } from './types';
@@ -114,6 +114,13 @@ export function readShot(state: GameState, shooter: Player, kind: ShotKind = 'no
   const keeper = keeperOf(state, enemyOf(shooter.team));
   const reflex = keeper ? keeper.stats.reflexes : 5;
 
+  // Portero despistado: a más casillas de su boca del arco (Chebyshev),
+  // más regalo de gol. Desde FAR_KEEPER_FROM casillas penaliza la defensa.
+  const keeperDist = keeper
+    ? Math.max(Math.abs(keeper.pos.col - target.col), Math.abs(keeper.pos.row - target.row))
+    : 9;
+  const farKeeperBonus = Math.min(FAR_KEEPER_CAP, Math.max(0, keeperDist - (FAR_KEEPER_FROM - 1)) * FAR_KEEPER_BONUS);
+
   let goal: number;
   let off: number;
   const block = Math.round(Math.min(30, rawBlock * 8));
@@ -123,7 +130,7 @@ export function readShot(state: GameState, shooter: Player, kind: ShotKind = 'no
       // El Billetes es un cañonazo de media/larga: de cerca es tirar dinero,
       // y lejos la factura de fuera se dispara. La distancia le pesa poco.
       const distTerm = dist * 2.4;
-      goal = 48 - distTerm + (shooter.stats.shoot - 5) * 2.5 - anglePenalty * 0.4 - pressure * 0.9 - (reflex - 5) * 1.6;
+      goal = 48 - distTerm + farKeeperBonus + (shooter.stats.shoot - 5) * 2.5 - anglePenalty * 0.4 - pressure * 0.9 - (reflex - 5) * 1.6;
       goal = Math.max(6, Math.min(88, goal));
       off = 14 + Math.max(0, dist - 2) * 2.4 - (shooter.stats.shoot - 5) * 1.4 + anglePenalty * 0.5;
       off = Math.max(5, Math.min(55, Math.round(off)));
@@ -132,14 +139,14 @@ export function readShot(state: GameState, shooter: Player, kind: ShotKind = 'no
     case 'vaselina': {
       // La vaselina se basa en el ángulo y en que el portero no llega: de
       // frente y de lejos no justifica sus 2 AP.
-      goal = 71 - dist * 8 + (shooter.stats.shoot - 5) * 5 - anglePenalty * 0.25 - pressure * 1.7 - (reflex - 5) * 1.6;
+      goal = 71 - dist * 8 + farKeeperBonus + (shooter.stats.shoot - 5) * 5 - anglePenalty * 0.25 - pressure * 1.7 - (reflex - 5) * 1.6;
       goal = Math.max(3, Math.min(80, goal));
       off = 3 + Math.max(0, dist - 2) * 1.05 - (shooter.stats.shoot - 5) * 1.05 + anglePenalty * 0.3;
       off = Math.max(2, Math.min(28, Math.round(off)));
       break;
     }
     default: {
-      goal = 80 - dist * 10 + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
+      goal = 80 - dist * 10 + farKeeperBonus + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
       goal = Math.max(3, Math.min(82, goal));
       off = Math.round(Math.max(4, Math.min(30, 6 + Math.max(0, dist - 2) * 1.6 - (shooter.stats.shoot - 5) * 0.8 + anglePenalty * 0.5)));
       break;

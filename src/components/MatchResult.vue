@@ -81,7 +81,7 @@ function possession(team: 0 | 1): number {
           <tr><td>Pases/tiros</td><td>{{ state.stats[0].shots }}</td><td>{{ state.stats[1].shots }}</td></tr>
           <tr><td>Tiros a puerta</td><td>{{ state.stats[0].onTarget }}</td><td>{{ state.stats[1].onTarget }}</td></tr>
           <tr><td>Balones robados</td><td>{{ state.stats[0].steals }}</td><td>{{ state.stats[1].steals }}</td></tr>
-          <tr><td>Possesión</td><td>{{ possession(0) }}%</td><td>{{ possession(1) }}%</td></tr>
+          <tr><td>Posesión</td><td>{{ possession(0) }}%</td><td>{{ possession(1) }}%</td></tr>
         </tbody>
       </table>
 

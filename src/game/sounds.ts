@@ -67,6 +67,23 @@ const SOUNDS: Record<SoundName, Note[]> = {
   fulltime: [
     { freq: 523, dur: 0.14, type: 'triangle', gain: 0.45 },
     { freq: 392, dur: 0.22, type: 'triangle', gain: 0.45, delay: 0.14 }
+  ],
+  whistle: [
+    { freq: 2093, dur: 0.28, type: 'sine', gain: 0.5 },
+    { freq: 2320, dur: 0.16, type: 'sine', gain: 0.45, delay: 0.18 },
+    { freq: 2093, dur: 0.34, type: 'sine', gain: 0.5, delay: 0.36 }
+  ],
+  groan: [
+    { freq: 320, dur: 0.5, type: 'sine', gain: 0.35, slideTo: 210 },
+    { freq: 280, dur: 0.62, type: 'triangle', gain: 0.25, slideTo: 170, delay: 0.1 }
+  ],
+  fanfare: [
+    { freq: 523, dur: 0.12, type: 'square', gain: 0.35 },
+    { freq: 659, dur: 0.12, type: 'square', gain: 0.35, delay: 0.12 },
+    { freq: 784, dur: 0.12, type: 'square', gain: 0.35, delay: 0.24 },
+    { freq: 1046, dur: 0.5, type: 'square', gain: 0.4, delay: 0.36 },
+    { freq: 784, dur: 0.4, type: 'triangle', gain: 0.3, delay: 0.5 },
+    { freq: 1046, dur: 0.55, type: 'triangle', gain: 0.35, delay: 0.7 }
   ]
 };
 

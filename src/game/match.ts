@@ -245,7 +245,8 @@ export function doShoot(state: GameState, shooterId: number, kind: ShotKind = 'n
       // y si el gol es con disparo especial, llena también la del autor.
       grantMeter(state, enemyOf(p.team), events);
       if (specialGoal) grantMeter(state, p.team, events);
-      kickoffAfterGoal(state, p.team, events);
+      // Saque de centro para el equipo que encaja, como manda el fútbol.
+      kickoffAfterGoal(state, enemyOf(p.team), events);
       break;
     case 'save':
       log(state, `¡Parada del portero! Despeja el balón.`);
@@ -470,7 +471,7 @@ export function notePossession(state: GameState): void {
   }
 }
 
-/** Tras un gol: recoloca a ambos equipos y saca el equipo que marcó. */
+/** Tras un gol: recoloca a ambos equipos y saca el equipo que encaja. */
 function kickoffAfterGoal(state: GameState, kickTeam: TeamId, events: GameEvent[]): void {
   applyKickoff(state, kickTeam);
   state.currentTeam = kickTeam;
