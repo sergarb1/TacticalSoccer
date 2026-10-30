@@ -57,7 +57,9 @@ function midpoint(a: Cell, b: Cell): Cell {
   return clampCell({ col: Math.round((a.col + b.col) / 2), row: Math.round((a.row + b.row) / 2) });
 }
 
-/** Rival mejor situado para interceptar el pase (a ≤1 casilla de la trayectoria). */
+/** Rival mejor situado para interceptar el pase. Quien esté plantado a
+ * cortar (postura 'cut') lee la jugada: el doble de radio y no necesita
+ * pegarse a la trayectoria. */
 function bestInterceptor(
   state: GameState,
   from: Cell,
@@ -67,9 +69,12 @@ function bestInterceptor(
   let best: { player: Player; chance: number } | null = null;
   for (const p of state.players) {
     if (p.team !== enemyTeam) continue;
+    const cutting = p.stance === 'cut';
     const d = distToSegment(p.pos, from, to);
-    if (d > 1) continue;
-    const chance = Math.max(5, 30 + (p.stats.defense - 5) * 4 - d * 15);
+    if (d > (cutting ? 2 : 1)) continue;
+    const chance = cutting
+      ? Math.max(20, 48 + (p.stats.defense - 5) * 5)
+      : Math.max(5, 30 + (p.stats.defense - 5) * 4 - d * 15);
     if (!best || chance > best.chance) best = { player: p, chance };
   }
   return best;

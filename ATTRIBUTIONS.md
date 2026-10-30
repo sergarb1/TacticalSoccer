@@ -8,13 +8,21 @@
 - **Sonidos de impacto** del pack *Ultrasound* de [Kenney](https://kenney.nl)
   (CC0/public domain), auto-alojados en `public/sfx/*.wav` y usados como
   muestras de paso/robo con respaldo sintetizado vía Web Audio.
+- **Sprites de los futbolistas** del pack *Sports Pack* de
+  [Kenney](https://kenney.nl) (CC0/public domain; ficha oficial del pack en
+  https://kenney.nl/assets/sports-pack). Recortados (5 poses por equipo),
+  escalados ×3 y auto-alojados en `public/sprites/rojo-*.png` y
+  `public/sprites/azul-*.png`; cada equipo lleva además el anillo de color de
+  la paleta del juego. Los balones de fútbol del mismo pack no se usan:
+  el balón del tablero sigue siendo SVG propio.
 
 Todo el resto del contenido visual y sonoro fue creado expresamente para este
 proyecto:
 
 - **Gráficos**: dibujados con SVG y CSS propios (campo de fútbol a rayas,
-  líneas reglamentarias, porterías con red, fichas circulares de los equipos,
-  balón, minimapa, iconográficos y logotipo del menú).
+  líneas reglamentarias, porterías con red, balón, minimapa, iconográficos y
+  logotipo del menú). Los sprites de los jugadores ya no son fichas
+  circulares propias: usan el pack de Kenney declarado arriba.
 - **Sonido**: generado en tiempo real con la Web Audio API
   (`src/game/sounds.ts`) — tipos de onda y envolventes definidos en código.
 

@@ -38,6 +38,14 @@ const SOUNDS: Record<SoundName, Note[]> = {
     { freq: 170, dur: 0.12, type: 'triangle', gain: 0.4, delay: 0.07 }
   ],
   shot: [{ freq: 80, dur: 0.16, type: 'square', gain: 0.55, slideTo: 55 }],
+  shotSpecial: [
+    { freq: 60, dur: 0.22, type: 'square', gain: 0.6, slideTo: 40 },
+    { freq: 200, dur: 0.1, type: 'triangle', gain: 0.4, delay: 0.05 }
+  ],
+  cut: [
+    { freq: 260, dur: 0.09, type: 'sawtooth', gain: 0.35 },
+    { freq: 520, dur: 0.07, type: 'sine', gain: 0.3, delay: 0.06 }
+  ],
   goal: [
     { freq: 523, dur: 0.11, type: 'triangle', gain: 0.5 },
     { freq: 659, dur: 0.11, type: 'triangle', gain: 0.5, delay: 0.1 },

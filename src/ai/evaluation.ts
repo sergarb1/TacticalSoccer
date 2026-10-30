@@ -26,7 +26,7 @@ export function attackScore(state: GameState, carrier: Player, cell: Cell): numb
   const dy = Math.abs(cell.row - GOAL_CENTER_ROW);
   const dist = Math.hypot(dx, dy);
   let s = 120 - dist * 9;
-  s += Math.max(0, 6 - Math.abs(cell.row - 4)) * 6; // remates centrales
+  s += Math.max(0, 6 - Math.abs(cell.row - GOAL_CENTER_ROW)) * 6; // remates centrales
   s -= pressureAt(state, cell, enemyOf(carrier.team)) * 6;
   return s;
 }

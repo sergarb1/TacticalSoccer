@@ -50,7 +50,7 @@ const midRow = computed(() => GOAL_CENTER_ROW * ch);
         <circle
           :cx="d.x"
           :cy="d.y"
-          r="3.6"
+          r="3.1"
           :fill="d.p.team === 0 ? 'var(--home)' : 'var(--away)'"
           stroke="#0c1c12"
           stroke-width="1"

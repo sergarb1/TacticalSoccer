@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, doMove, doPass, doShoot, doSteal, endTurn } from '../src/game/match';
+import { createMatch, doMove, doPass, doShoot, doSteal, doHack, endTurn } from '../src/game/match';
 import { nextAiAction } from '../src/ai/strategy';
 import { DIFFICULTY } from '../src/ai/difficulty';
 import type { GameState, MatchConfig } from '../src/game/types';
@@ -10,9 +10,9 @@ function invariantCheck(s: GameState, step: number): void {
   expect(new Set(cells).size, `posición duplicada en paso ${step}`).toBe(cells.length);
   for (const p of s.players) {
     expect(p.pos.col).toBeGreaterThanOrEqual(0);
-    expect(p.pos.col).toBeLessThanOrEqual(8);
+    expect(p.pos.col).toBeLessThanOrEqual(12);
     expect(p.pos.row).toBeGreaterThanOrEqual(0);
-    expect(p.pos.row).toBeLessThanOrEqual(4);
+    expect(p.pos.row).toBeLessThanOrEqual(6);
   }
   if (s.ball.carrier !== null) {
     const c = s.players.find((p) => p.id === s.ball.carrier);
@@ -42,8 +42,9 @@ function playMatch(seed: number, level: 'easy' | 'normal' | 'hard'): GameState {
       switch (action.kind) {
         case 'move': r = doMove(s, action.playerId, action.dest); break;
         case 'pass': r = doPass(s, action.playerId, action.targetId); break;
-        case 'shoot': r = doShoot(s, action.playerId); break;
+        case 'shoot': r = doShoot(s, action.playerId, action.shotKind ?? 'normal'); break;
         case 'steal': r = doSteal(s, action.playerId, action.victimId); break;
+        case 'hack': r = doHack(s, action.playerId, action.victimId); break;
       }
       if (r && !r.ok) {
         // La estrategia nunca debe proponer acciones ilegales:

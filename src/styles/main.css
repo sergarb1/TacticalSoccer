@@ -126,6 +126,26 @@ h1, h2, h3 { margin: 0; }
 }
 .selected-ring { animation: pulse-ring 1.2s ease-in-out infinite; }
 
+/* --- animaciones compartidas por tablero y fichas --- */
+/* hormigas marchando: guiones que avanzan (pases, cortes, balón suelto) */
+@keyframes dash-march {
+  to { stroke-dashoffset: -28; }
+}
+/* bob del balón de posesión en las fichas */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.4px); }
+}
+/* giro lento para anillos informativos (turno disponible) */
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+/* latido dorado para la barra nueva de especiales */
+@keyframes meter-pulse {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+}
+
 @keyframes goal-pop {
   0% { transform: scale(0.6); opacity: 0; }
   25% { transform: scale(1.08); opacity: 1; }

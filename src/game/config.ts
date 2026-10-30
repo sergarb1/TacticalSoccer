@@ -3,20 +3,21 @@
  * Todo lo ajustable (costes, probabilidades, dimensiones) vive aquí para
  * poder modificar el equilibrio sin tocar la lógica.
  */
-import type { TeamId } from './types';
+import type { ShotKind, TeamId } from './types';
 
 /**
  * Dimensiones del campo en casillas (5 contra 5).
- * Rejilla 9 x 5 con vista isométrica; portería de 3 casillas en cada fondo.
+ * Rejilla 13 x 7 con vista isométrica; campo grande para más estrategia,
+ * contrapesado con más alcance de movimiento y de pase.
  */
-export const FIELD_COLS = 9;
-export const FIELD_ROWS = 5;
+export const FIELD_COLS = 13;
+export const FIELD_ROWS = 7;
 /** Filas ocupadas por la boca de la portería (arco pequeño: solo el centro). */
-export const GOAL_ROWS = [2] as const;
+export const GOAL_ROWS = [3] as const;
 /** Fila central de la boca del arco: objetivo de los disparos. */
-export const GOAL_CENTER_ROW = 2;
+export const GOAL_CENTER_ROW = 3;
 /** Casilla del saque de centro. */
-export const KICKOFF_CELL = { col: 4, row: 2 };
+export const KICKOFF_CELL = { col: 6, row: 3 };
 
 /** Puntos de acción (AP) por turno. */
 export const AP_PER_TURN = 3;
@@ -29,12 +30,29 @@ export const COST = {
   move: 1,
   pass: 1,
   shoot: 1,
-  steal: 1
+  steal: 1,
+  cut: 1,
+  /** Hachazo robador: robo premium que gasta una acción especial. */
+  hack: 1
 } as const;
 
-/** Alcance de movimiento: 1 + velocidad/4 (campo pequeño). */
+/** Coste en AP de cada tipo de disparo. */
+export const SHOT_COST: Record<ShotKind, number> = {
+  normal: 1,
+  billetes: 2,
+  vaselina: 2
+};
+
+/** Nombre visible de cada tipo de disparo (para paneles y narración). */
+export const SHOT_LABEL: Record<ShotKind, string> = {
+  normal: 'Tiro',
+  billetes: 'Tiro Billetes',
+  vaselina: 'Vaselina'
+};
+
+/** Alcance de movimiento: 2 + velocidad/4 (campo grande, jinetes rápidos). */
 export function moveRange(speed: number, carryingBall: boolean, fatigueLevels: number): number {
-  let range = 1 + Math.floor(speed / 4) - fatigueLevels;
+  let range = 2 + Math.floor(speed / 4) - fatigueLevels;
   if (carryingBall) range -= 1;
   return Math.max(1, range);
 }
@@ -50,9 +68,9 @@ export function fatigueLevels(stamina: number, teamTurns: number): number {
   return levels;
 }
 
-/** Alcance máximo de pase: 2 + pase/3 casillas. */
+/** Alcance máximo de pase: 3 + pase/2 casillas (campo grande). */
 export function passRange(pass: number): number {
-  return 2 + Math.floor(pass / 3);
+  return 3 + Math.floor(pass / 2);
 }
 
 /** Radio (distancia de chebyshev) en el que un rival presiona. */
@@ -62,6 +80,22 @@ export const PRESSURE_CAP = 3;
 
 /** Distancia de chebyshev máxima para intentar robar el balón. */
 export const STEAL_RANGE = 1;
+/** Distancia de chebyshev máxima para plantarse a cortar líneas. */
+export const CUT_RANGE = 2;
+
+/** Alcance (chebyshev) del Hachazo robador: llega donde el robo normal no llega. */
+export const HACK_RANGE = 2;
+/** Aumento de probabilidad del Hachazo sobre el robo normal (puntos %). */
+export const HACK_BONUS = 25;
+
+/**
+ * Barras de acciones especiales: cada barra de METER_MAX segmentos llena
+ * concede una acción especial extra (Billetes, Vaselina o Hachazo).
+ * Segmentos ganados: gol encajado, gol con disparo especial y robo exitoso.
+ */
+export const METER_MAX = 3;
+/** Usos de acciones especiales que empieza cada equipo por partido. */
+export const SPECIALS_PER_MATCH = 2;
 
 export const TEAM_NAMES = ['Local', 'Visitante'] as const;
 /** Colores: el equipo local juega de rojo y el visitante de azul. */
@@ -78,8 +112,9 @@ export const PROB = {
   stealMax: 88
 };
 
-/** Claves de localStorage. */
+/** Claves de localStorage (v2: el formato de campo cambió, las partidas
+ * guardadas con rejilla 9x5 se descartan con gracia). */
 export const STORAGE_KEYS = {
   settings: 'tactical-soccer.settings.v1',
-  match: 'tactical-soccer.match.v1'
+  match: 'tactical-soccer.match.v2'
 } as const;

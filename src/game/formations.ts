@@ -238,7 +238,8 @@ export function placeTeams(state: GameState, cfg: MatchConfig): void {
         stats: bp.stats,
         pos: abs,
         hasMoved: false,
-        hasActed: false
+        hasActed: false,
+        stance: 'none'
       });
       id++;
     });

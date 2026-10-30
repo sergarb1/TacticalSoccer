@@ -5,7 +5,8 @@
  * Módulo puro: sin DOM ni dependencias externas (probable con vitest).
  */
 import {
-  AP_PER_TURN, COST, MINUTES_PER_TURN, TURNS_PER_HALF, TEAM_COLORS, passRange
+  AP_PER_TURN, COST, MINUTES_PER_TURN, TURNS_PER_HALF, TEAM_COLORS, passRange,
+  SHOT_COST, SHOT_LABEL, CUT_RANGE, HACK_RANGE, HACK_BONUS, METER_MAX, SPECIALS_PER_MATCH
 } from './config';
 import { Stream } from './rng';
 import {
@@ -14,11 +15,11 @@ import {
 import { reachable, cellKey } from './movement';
 import { passOptionsFor, resolvePass, passChance } from './passing';
 import { readShot, resolveShot, shotTarget, keeperOf } from './shooting';
-import { stealTargets, resolveSteal } from './defense';
+import { stealTargets, resolveSteal, cutTargets, hackTargets, stealChance } from './defense';
 import { applyKickoff } from './formations';
-import { inField } from './field';
+import { inField, cheby } from './field';
 import type {
-  ActionResult, Cell, GameEvent, GameState, MatchConfig, Player, SoundName, TeamId
+  ActionResult, Cell, GameEvent, GameState, MatchConfig, Player, ShotKind, SoundName, TeamId
 } from './types';
 
 export type ActionKindOfTeam = TeamId;
@@ -38,12 +39,31 @@ function log(state: GameState, msg: string): void {
   if (state.log.length > 120) state.log.splice(0, state.log.length - 120);
 }
 
+/**
+ * Añade un segmento a la barra del equipo. Al llenarse, la barra se
+ * descarga y concede una acción especial extra (Billetes/Vaselina/Hachazo).
+ */
+function grantMeter(state: GameState, team: TeamId, events: GameEvent[]): void {
+  state.meter[team] = Math.min(METER_MAX, state.meter[team] + 1);
+  const full = state.meter[team] >= METER_MAX;
+  if (full) {
+    state.meter[team] = 0;
+    state.specials[team] += 1;
+    events.push({ type: 'meter', team, meter: 0, full: true });
+    log(state, '¡Barra a tope! La acusación cae: acción especial extra en el bolsillo.');
+  } else {
+    events.push({ type: 'meter', team, meter: state.meter[team], full: false });
+    log(state, `Segmento de barra para el ${teamLabel(state, team)} (${state.meter[team]}/${METER_MAX}).`);
+  }
+}
+
 /** Crea una partida completa: 22 jugadores colocados y saque de centro. */
-export function createMatch(cfg: MatchConfig): GameState {
-  const state: GameState = {
+export function createMatch(cfg: MatchConfig): GameState {    const state: GameState = {
     v: 1,
     config: cfg,
     phase: 'playing',
+    meter: [0, 0],
+    specials: [SPECIALS_PER_MATCH, SPECIALS_PER_MATCH],
     currentTeam: 0,
     ap: AP_PER_TURN,
     turnInHalf: 0,
@@ -167,43 +187,60 @@ export function doPass(state: GameState, passerId: number, targetId: number): Ac
 /* Disparo                                                             */
 /* ------------------------------------------------------------------ */
 
-export function doShoot(state: GameState, shooterId: number): ActionResult {
+export function doShoot(state: GameState, shooterId: number, kind: ShotKind = 'normal'): ActionResult {
   const p = getPlayer(state, shooterId);
   if (!p) return { ok: false, code: 'unknown_player', message: 'Jugador no encontrado.', events: [] };
-  const guard = commonGuard(state, p, { needAp: COST.shoot, acted: true });
+  const needAp = SHOT_COST[kind];
+  const guard = commonGuard(state, p, { needAp, acted: true });
   if (!guard.ok) return { ok: false, code: guard.code, message: guard.message, events: [] };
   if (state.ball.carrier !== p.id) return { ok: false, code: 'no_ball', message: 'Este futbolista no tiene el balón.', events: [] };
+  if (kind !== 'normal' && state.specials[p.team] <= 0) {
+    return { ok: false, code: 'no_special', message: 'No te quedan acciones especiales: llena la barra o ahorra.', events: [] };
+  }
 
   const events: GameEvent[] = [];
-  state.ap -= COST.shoot;
+  state.ap -= needAp;
   p.hasActed = true;
-  const read = readShot(state, p);
+  // Los disparos especiales consumen un uso de acciones especiales (el
+  // intento, no el gol: las dudas también salen de la cartera).
+  let specialGoal = false;
+  if (kind !== 'normal') {
+    state.specials[p.team] -= 1;
+    specialGoal = true;
+  }
+  const read = readShot(state, p, kind);
   const target = shotTarget(state, p);
   const stream = new Stream(state.rng, (s) => (state.rng = s));
-  const res = resolveShot(state, p, stream.next.bind(stream), (n) => emit(events, n));
+  const res = resolveShot(state, p, kind, stream.next.bind(stream), (n) => emit(events, n));
   events.push({
     type: 'shot',
     shooterId: p.id,
+    kind,
     target,
     outcome: res.outcome,
     ballDest: res.ballDest,
     goal: res.outcome === 'goal'
   });
 
+  const special = kind !== 'normal' ? ` (${SHOT_LABEL[kind]})` : '';
   switch (res.outcome) {
     case 'goal':
-      log(state, `¡GOL del ${teamOfTeamId(shooterTeam(p))}! Disparo de ${p.name}.`);
+      log(state, `¡GOL del ${teamOfTeamId(shooterTeam(p))}! Disparo de ${p.name}${special}.`);
       events.push({ type: 'goal', team: p.team });
+      // Meter goles en propia... digo, meterle gol al rival llena su barra;
+      // y si el gol es con disparo especial, llena también la del autor.
+      grantMeter(state, enemyOf(p.team), events);
+      if (specialGoal) grantMeter(state, p.team, events);
       kickoffAfterGoal(state, p.team, events);
       break;
     case 'save':
       log(state, `¡Parada del portero! Despeja el balón.`);
       break;
     case 'off':
-      log(state, `El disparo de ${p.name} se marcha fuera.`);
+      log(state, `El disparo de ${p.name}${special} se marcha fuera.`);
       break;
     case 'block':
-      log(state, `Disparo de ${p.name} bloqueado por la defensa.`);
+      log(state, `Disparo de ${p.name}${special} bloqueado por la defensa.`);
       break;
     case 'rebound':
       log(state, `¡Rebote peligroso!`);
@@ -245,12 +282,88 @@ export function doSteal(state: GameState, defenderId: number, victimId: number):
   const res = resolveSteal(state, d, v, stream.next.bind(stream), (n) => emit(events, n));
   events.push({ type: 'steal', defenderId: d.id, success: res.success });
   if (res.success) {
-    // Robo exitoso: puede aún pasar o chutar este turno si le quedan AP.
+    // Robo exitoso: puede aún pasar o chutar este turno si le quedan AP,
+    // y además mete un segmento en su barra de especiales.
     d.hasActed = false;
+    grantMeter(state, d.team, events);
     log(state, `¡${d.name} roba el balón a ${v.name}!`);
   } else {
     log(state, `${d.name} no logra arrebatar el balón.`);
   }
+  return { ok: true, message: state.message, events };
+}
+
+/* ------------------------------------------------------------------ */
+/* Hachazo robador (acción especial)                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * «Hachazo»: robo premium. Gasta 1 AP y una acción especial; llega hasta
+ * HACK_RANGE casillas (el doble del robo normal) y roba con más
+ * probabilidad (+HACK_BONUS). Al contrario que el robo normal, al acertar
+ * el futbolista queda agotado: el hachazo se come el turno.
+ */
+export function doHack(state: GameState, defenderId: number, victimId: number): ActionResult {
+  const d = getPlayer(state, defenderId);
+  const v = getPlayer(state, victimId);
+  if (!d || !v) return { ok: false, code: 'unknown_player', message: 'Jugador no encontrado.', events: [] };
+  const guard = commonGuard(state, d, { needAp: COST.hack, acted: true });
+  if (!guard.ok) return { ok: false, code: guard.code, message: guard.message, events: [] };
+  if (state.ball.carrier === null) return { ok: false, code: 'no_carrier', message: 'El balón está suelto: corre a por él.', events: [] };
+  if (v.team === d.team) return { ok: false, code: 'same_team', message: 'Ese futbolista es de tu equipo.', events: [] };
+  if (state.ball.carrier !== v.id) return { ok: false, code: 'no_carrier', message: 'Ese futbolista no tiene el balón.', events: [] };
+  if (state.specials[d.team] <= 0) {
+    return { ok: false, code: 'no_special', message: 'Sin acciones especiales no hay hachazo.', events: [] };
+  }
+  if (!hackTargets(state, d).some((t) => t.id === v.id)) {
+    return { ok: false, code: 'too_far', message: `El hachazo llega hasta ${HACK_RANGE} casillas.`, events: [] };
+  }
+
+  const events: GameEvent[] = [];
+  state.ap -= COST.hack;
+  d.hasActed = true;
+  state.specials[d.team] -= 1;
+  const stream = new Stream(state.rng, (s) => (state.rng = s));
+  // resolveSteal acepta un bonus de probabilidad para el golpe premium.
+  const res = resolveSteal(state, d, v, stream.next.bind(stream), (n) => emit(events, n), HACK_BONUS);
+  events.push({ type: 'steal', defenderId: d.id, success: res.success, hachazo: true });
+  if (res.success) {
+    grantMeter(state, d.team, events);
+    log(state, `¡HACHAZO de ${d.name}! Le parte el balón a ${v.name} y la barra brilla.`);
+  } else {
+    log(state, `${d.name} lanza el hachazo... ${v.name} aguanta el golpe con el balón agarrado.`);
+  }
+  return { ok: true, message: state.message, events };
+}
+
+/* ------------------------------------------------------------------ */
+/* Plantarse a cortar (postura defensiva)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * «Intentar cortar»: el defensor consume 1 AP y se planta a cubrir líneas
+ * durante el turno rival. Mientras dure la postura ('cut'), sus cortes de
+ * pases salen con el doble de radio y bloquea tiros cerca de su línea.
+ * La postura se disuelve al llegar el turno de su propio equipo.
+ */
+export function doCut(state: GameState, defenderId: number): ActionResult {
+  const d = getPlayer(state, defenderId);
+  if (!d) return { ok: false, code: 'unknown_player', message: 'Jugador no encontrado.', events: [] };
+  const guard = commonGuard(state, d, { needAp: COST.cut, acted: true });
+  if (!guard.ok) return { ok: false, code: guard.code, message: guard.message, events: [] };
+  const c = carrier(state);
+  if (!c) return { ok: false, code: 'no_carrier', message: 'No hay rival con balón: nada que cortar.', events: [] };
+  if (cheby(d.pos, c.pos) > CUT_RANGE) {
+    return { ok: false, code: 'too_far', message: 'El rival con balón está demasiado lejos para plantarse al corte.', events: [] };
+  }
+
+  const events: GameEvent[] = [];
+  state.ap -= COST.cut;
+  d.hasActed = true;
+  d.stance = 'cut';
+  emit(events, 'cut');
+  events.push({ type: 'cut', defenderId: d.id, failed: false });
+  log(state, `${d.name} se planta a cortar líneas (postura activa el turno rival).`);
   return { ok: true, message: state.message, events };
 }
 
@@ -302,6 +415,7 @@ export function endTurn(state: GameState): ActionResult {
     if (p.team === state.currentTeam) {
       p.hasMoved = false;
       p.hasActed = false;
+      p.stance = 'none'; // la postura de corte cubre solo el turno rival
     }
   }
   log(state, `Turno del ${teamLabel(state, state.currentTeam)}.`);

@@ -63,7 +63,7 @@ subcarpeta sin configuración adicional.
 
 # 🕹️ Cómo se juega
 
-El partido se disputa sobre un **campo de 9×5 casillas con vista isométrica**:
+El partido se disputa sobre un **campo de 13×7 casillas con vista isométrica**:
 una cuadrícula de rombos de césped, más compacta y táctica que el fútbol clásico,
 con **5 jugadores por equipo** (portero + 4 de campo):
 **rojo (local, ataca a la derecha)** contra **azul (visitante, ataca a la izquierda)**.

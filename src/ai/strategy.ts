@@ -10,7 +10,8 @@ import {
 import { reachable } from '../game/movement';
 import { passOptionsFor } from '../game/passing';
 import { readShot } from '../game/shooting';
-import { stealTargets, stealChance } from '../game/defense';
+import { stealTargets, stealChance, hackTargets } from '../game/defense';
+import { HACK_BONUS, STEAL_RANGE } from '../game/config';
 import { carrier, teamPlayers } from '../game/rules';
 import { cheby } from '../game/field';
 import type { AiLevel } from '../game/types';
@@ -20,7 +21,8 @@ import type { DifficultyProfile } from './difficulty';
 export type AiDecision =
   | { kind: 'move'; playerId: number; dest: Cell }
   | { kind: 'pass'; playerId: number; targetId: number }
-  | { kind: 'shoot'; playerId: number }
+  | { kind: 'shoot'; playerId: number; shotKind?: 'normal' | 'billetes' | 'vaselina' }
+  | { kind: 'hack'; playerId: number; victimId: number }
   | { kind: 'steal'; playerId: number; victimId: number }
   | null;
 
@@ -66,10 +68,22 @@ export function nextAiAction(state: GameState): AiDecision {
 
   /* ---------------- tenemos el balón ---------------- */
   if (c.team === team) {
-    // 1) disparar si la ocasión es buena
+    // 1) disparar si la ocasión es buena; con 2 AP y distancia larga, si el
+    //    normal no llega pero el Tiro Billetes sí, se saca la cartera.
     if (!c.hasActed && state.ap > 0) {
       const read = readShot(state, c);
       if (read.goal >= prof.shootThreshold) return { kind: 'shoot', playerId: c.id };
+      if (state.ap >= 2 && state.specials[team] > 0) {
+        // Vaselina cuando el ángulo la rescata (el tiro normal se hunde).
+        const vaselina = readShot(state, c, 'vaselina');
+        if (vaselina.dist <= 6 && vaselina.goal >= 30 && vaselina.goal >= read.goal + 12) {
+          return { kind: 'shoot', playerId: c.id, shotKind: 'vaselina' };
+        }
+        const billetes = readShot(state, c, 'billetes');
+        if (billetes.dist >= 5.5 && billetes.goal >= prof.shootThreshold * 0.8) {
+          return { kind: 'shoot', playerId: c.id, shotKind: 'billetes' };
+        }
+      }
     }
     // 2) mejor pase posible si mejora la posición y el riesgo compensa
     if (!c.hasActed && state.ap > 0) {
@@ -109,18 +123,39 @@ export function nextAiAction(state: GameState): AiDecision {
 
   /* ---------------- el rival tiene el balón ---------------- */
   if (state.ap > 0) {
-    // 1) robo al portador adyacente si el margen compensa
+    // 1) robo al portador adyacente si el margen compensa; si el robo
+    //    normal no compensa pero el hachazo sí, se gasta la especial.
     let bestSteal: { id: number; victim: number; chance: number } | null = null;
+    let bestHack: { id: number; victim: number; chance: number } | null = null;
+    const canSpecial = state.specials[team] > 0;
     for (const p of players.filter((q) => !q.hasActed && !q.hasMoved)) {
       for (const v of stealTargets(state, p)) {
         const chance = stealChance(state, p, v);
         if (!bestSteal || chance > bestSteal.chance) {
           bestSteal = { id: p.id, victim: v.id, chance };
         }
+        if (canSpecial) {
+          const hc = stealChance(state, p, v) + HACK_BONUS;
+          if (!bestHack || hc > bestHack.chance) bestHack = { id: p.id, victim: v.id, chance: hc };
+        }
+      }
+      if (canSpecial) {
+        for (const v of hackTargets(state, p)) {
+          if (cheby(p.pos, v.pos) <= STEAL_RANGE) continue; // esos ya salen en el robo normal
+          const hc = stealChance(state, p, v) + HACK_BONUS;
+          if (!bestHack || hc > bestHack.chance) bestHack = { id: p.id, victim: v.id, chance: hc };
+        }
       }
     }
     if (bestSteal && bestSteal.chance >= prof.stealThreshold) {
       return { kind: 'steal', playerId: bestSteal.id, victimId: bestSteal.victim };
+    }
+    if (
+      bestHack &&
+      bestHack.chance >= prof.stealThreshold + 10 &&
+      (!bestSteal || bestSteal.chance < bestHack.chance - 10)
+    ) {
+      return { kind: 'hack', playerId: bestHack.id, victimId: bestHack.victim };
     }
     // 2) reubicación defensiva (tápeta entre el balón y mi portería)
     if (prof.positionalIQ) {

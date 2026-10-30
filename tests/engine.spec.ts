@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, doMove, doPass, doShoot, doSteal, endTurn } from '../src/game/match';
+import { createMatch, doMove, doPass, doShoot, doSteal, doCut, endTurn } from '../src/game/match';
 import { reachable, cellKey } from '../src/game/movement';
 import { passOptionsFor, passChance } from '../src/game/passing';
 import { readShot } from '../src/game/shooting';
@@ -45,7 +45,7 @@ describe('inicio de partida', () => {
     expect(s.currentTeam).toBe(0);
     expect(s.ap).toBe(AP_PER_TURN);
     expect(s.ball.carrier).toBeNull();
-    expect(s.ball.pos).toEqual({ col: 4, row: 2 });
+    expect(s.ball.pos).toEqual({ col: 6, row: 3 });
     expect(s.phase).toBe('playing');
   });
 
@@ -106,9 +106,9 @@ describe('movimiento', () => {
     const s = fresh();
     const p = s.players.find((q) => q.team === s.currentTeam && q.role === 'MC')!;
     const r = reachable(s, p);
-    // con velocidad 5-7: alcance 2-3 en Chebyshev (1 + velocidad/4)
+    // campo grande: alcance 2 + velocidad/4 en Chebyshev (3-4 para vel 5-8)
     const maxDist = Math.max(...[...r.paths.values()].map((path) => Math.abs(path.at(-1)!.col - p.pos.col) + 0));
-    expect(maxDist).toBeLessThanOrEqual(1 + Math.floor(p.stats.speed / 4));
+    expect(maxDist).toBeLessThanOrEqual(2 + Math.floor(p.stats.speed / 4));
   });
 
   it('no permite mover a una casilla ocupada', () => {
@@ -202,7 +202,7 @@ describe('disparos y goles', () => {
   function prepareShooter(s: GameState): { state: GameState; shooter: number } {
     // Coloca el portador pegado al arco rival mediante posesión directa de prueba.
     const shooter = s.players.find((p) => p.team === s.currentTeam && p.role === 'DC')!;
-    shooter.pos = { col: s.currentTeam === 0 ? 7 : 1, row: 2 };
+    shooter.pos = { col: s.currentTeam === 0 ? 10 : 2, row: 3 };
     s.ball.carrier = shooter.id;
     s.ball.pos = { ...shooter.pos };
     return { state: s, shooter: shooter.id };
@@ -215,7 +215,7 @@ describe('disparos y goles', () => {
     const close = readShot(s, s.players.find((p) => p.id === prepped.shooter)!).goal;
     s.ball.carrier = null;
     const far = s.players.find((p) => p.team === 0 && p.role === 'MC')!;
-    far.pos = { col: 6, row: 1 };
+    far.pos = { col: 8, row: 1 };
     s.ball.carrier = far.id;
     s.ball.pos = { ...far.pos };
     const farRead = readShot(s, far);
@@ -235,7 +235,7 @@ describe('disparos y goles', () => {
     // tras el gol, recolocación: el equipo que marcó saca (regla Gañan Edition)
     expect(s.currentTeam).toBe(0);
     expect(s.ball.carrier).toBeNull();
-    expect(s.ball.pos).toEqual({ col: 4, row: 2 });
+    expect(s.ball.pos).toEqual({ col: 6, row: 3 });
   });
 
   it('la parada la retiene el portero (tirada de despeje favorable)', () => {
@@ -294,16 +294,85 @@ describe('disparos y goles', () => {
     expect(r.ok).toBe(true);
     expect(s.ball.carrier).toBe(keeper.id);
   });
+
+  it('el Tiro Billetes cuesta 2 AP y llega más lejos que el tiro normal', () => {
+    const s = fresh();
+    const shooter = s.players.find((p) => p.team === s.currentTeam && p.role === 'DC')!;
+    // lejos del arco (col 4 vs portería en col 13)
+    shooter.pos = { col: 4, row: 3 };
+    s.ball.carrier = shooter.id;
+    s.ball.pos = { ...shooter.pos };
+    expect(readShot(s, shooter, 'billetes').goal).toBeGreaterThan(readShot(s, shooter, 'normal').goal);
+    // semilla de disparo FUERA (no gol, para que no haya saque de centro)
+    const read = readShot(s, shooter, 'billetes');
+    const acc = read.goal + read.save + read.block;
+    s.rng = seedBetween(s, Math.min(acc, 90), Math.min(99, acc + read.off), (v) => v * 100);
+    const r = doShoot(s, shooter.id, 'billetes');
+    expect(r.ok).toBe(true);
+    expect(s.ap).toBe(AP_PER_TURN - 2);
+  });
+
+  it('la Vaselina penaliza menos por ángulo que el tiro normal', () => {
+    const s = fresh();
+    const shooter = s.players.find((p) => p.team === s.currentTeam && p.role === 'DC')!;
+    // cerca y con ángulo: fila extrema mirando la portería central (fila 3)
+    shooter.pos = { col: 11, row: 6 };
+    s.ball.carrier = shooter.id;
+    s.ball.pos = { ...shooter.pos };
+    expect(readShot(s, shooter, 'vaselina').goal).toBeGreaterThan(readShot(s, shooter, 'normal').goal);
+  });
+
+  it('un defensor en postura de corte tapa más la línea de tiro', () => {
+    const s = fresh();
+    const prepped = prepareShooter(s);
+    const shooter = s.players.find((p) => p.id === prepped.shooter)!;
+    const def = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
+    // a mitad de camino entre tirador (col 10) y portería (col 13)
+    def.pos = { col: 11, row: 3 };
+    const sin = readShot(s, shooter).block;
+    def.stance = 'cut';
+    const con = readShot(s, shooter).block;
+    expect(con).toBeGreaterThan(sin);
+  });
+
+  it('doCut consume 1 AP y planta la postura al rival cercano', () => {
+    const s = fresh();
+    endTurn(s); // turno del equipo 1
+    const victim = s.players.find((p) => p.team === 0 && p.role === 'DC')!;
+    victim.pos = { col: 8, row: 4 };
+    s.ball.carrier = victim.id;
+    s.ball.pos = { ...victim.pos };
+    const def = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
+    def.pos = { col: 9, row: 5 }; // a chebyshev 2: dentro del rango de corte
+    const r = doCut(s, def.id);
+    expect(r.ok).toBe(true);
+    expect(def.stance).toBe('cut');
+    expect(def.hasActed).toBe(true);
+    expect(s.ap).toBe(AP_PER_TURN - 1);
+    // demasiado lejos: rechazado
+    endTurn(s);
+    endTurn(s);
+    const def2 = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
+    def2.stance = 'none';
+    def2.hasActed = false;
+    s.ball.carrier = victim.id;
+    victim.pos = { col: 10, row: 2 };
+    s.ball.pos = { ...victim.pos };
+    def2.pos = { col: 1, row: 0 };
+    const r2 = doCut(s, def2.id);
+    expect(r2.ok).toBe(false);
+    expect(r2.code).toBe('too_far');
+  });
 });
 
 describe('robos de balón', () => {
   function prepareSteal(s: GameState): { state: GameState; defender: number; victim: number } {
     const victim = s.players.find((p) => p.team === 0 && p.role === 'DC')!;
-    victim.pos = { col: 6, row: 3 };
+    victim.pos = { col: 8, row: 4 };
     s.ball.carrier = victim.id;
     s.ball.pos = { ...victim.pos };
     const defender = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
-    defender.pos = { col: 7, row: 3 };
+    defender.pos = { col: 9, row: 4 };
     return { state: s, defender: defender.id, victim: victim.id };
   }
 

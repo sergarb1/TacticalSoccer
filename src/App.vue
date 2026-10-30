@@ -14,10 +14,11 @@ import TutorialOverlay from './components/TutorialOverlay.vue';
 import CommentaryBar from './components/CommentaryBar.vue';
 import {
   game, startMatch, tryResume, selectPlayer, boardCellClick, boardTokenClick,
-  actionMove, actionPass, actionShotArm, actionShotConfirm, actionSteal,
-  finishTurn, stealOpportunities, currentPassOptions, shotPreview, setMode, cancelMode,
+  actionMove, actionPass, actionShotArm, actionShotConfirm, actionSteal, actionCut,
+  finishTurn, stealOpportunities, cutOpportunities, hackOpportunities, actionHack, currentPassOptions, shotPreviews, setMode, cancelMode,
   moveHighlights
 } from './composables/useGame';
+import type { ShotKind } from './game/types';
 import { useSettings } from './composables/useSettings';
 import { passOptionsFor } from './game/passing';
 import { getPlayer } from './game/rules';
@@ -40,7 +41,9 @@ const contextualTip = computed(() => {
     case 'moving': return 'Elige una casilla blanca para moverte (gasta 1 PA).';
     case 'passing': return 'Pulsa «Pasar a…» en la lista: el % es la probabilidad de acierto.';
     case 'stealing': return 'Pulsa «Robar» en la lista de rivales al alcance.';
-    case 'shooting': return '';
+    case 'hacking': return 'Elige a quién soltarle el hachazo: roba con más garra y a más distancia.';
+    case 'cutting': return '«Cortar» se planta ante el rival y tapa sus líneas el turno que viene.';
+    case 'shooting': return 'Tiro normal (1 PA), Tiro Billetes y Vaselina (2 PA): el más caro arriesga más, pero hace más daño.';
     default: break;
   }
   if (s.ball.carrier === null) return 'Balón suelto: lleva una ficha hasta su rombo dorado para controlarlo.';
@@ -127,8 +130,15 @@ const passOptions = computed(() => {
 });
 
 const stealOptions = computed(() => (ui.mode === 'stealing' ? stealOpportunities() : []));
+const hackOptions = computed(() => (ui.mode === 'hacking' ? hackOpportunities() : []));
+const cutOptions = computed(() => (ui.mode === 'cutting' ? cutOpportunities() : []));
 
-const shotRead = computed(() => (ui.mode === 'shooting' ? shotPreview() : null));
+const shotReads = computed(() => (ui.mode === 'shooting' ? shotPreviews() : null));
+const shotRead = computed(() => (ui.mode === 'shooting' ? shotPreviews()?.normal ?? null : null));
+
+function onShot(kind: ShotKind): void {
+  actionShotConfirm(kind);
+}
 
 /* ---------------- tutorial ---------------- */
 interface TutStep {
@@ -273,13 +283,20 @@ function endTutorial(): void {
             :mode="ui.mode"
             :pass-options-list="passOptions"
             :steal-options="stealOptions"
+            :hack-options="hackOptions"
+            :cut-options="cutOptions"
+            :shot-reads="shotReads ?? undefined"
             @move="actionMove()"
             @pass-mode="setMode('passing')"
             @pass-to="actionPass($event)"
             @steal-mode="setMode('stealing')"
             @steal="actionSteal($event)"
+            @hack-mode="setMode('hacking')"
+            @hack="actionHack($event)"
+            @cut-mode="setMode('cutting')"
+            @cut="actionCut()"
             @shoot-arm="actionShotArm()"
-            @shoot-confirm="actionShotConfirm()"
+            @shoot="onShot"
             @shoot-cancel="cancelMode()"
             @cancel="cancelMode()"
             @end-turn="finishTurn()"

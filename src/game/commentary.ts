@@ -20,6 +20,56 @@ function nameOf(s: GameState, id: number | undefined): string {
 
 const sideOf = (t: 0 | 1): string => (t === 0 ? 'los rojos' : 'los azules');
 
+/** Líneas para el Tiro Billetes (el cañonazo con sello). */
+const BILLETES = {
+  launch: [
+    '¡Saca la cartera… TIRO BILLETES! ¡Esto va con sello y factura!',
+    '¡TIRO BILLETEEEES! ¡Cañonazo de la casa: feo de mirar y divino de oír!',
+    '¡Se gasta los billetes en el disparo! ¡Qué manera de jugársela, ché!'
+  ],
+  goal: [
+    '¡GOOOOOOL DE BILLETES! ¡El Turia se sale de su cauce… y el banco también!',
+    '¡GOLAZO, GOLAZO BILLETES! ¡Y esto se cobra con intereses, ché!',
+    '¡Y la factura del cañonazo la cobran EN PORTERÍA! ¡Qué dineral de gol!'
+  ],
+  off: [
+    '¡Billetes al río! Disparo divino… a la tercera fila.',
+    'El tiro billetes se fue a la grada: bonito despilfarro, ché.'
+  ],
+  save: [
+    '¡Tiro billetes… y el portero ejecuta! ¡Parada de cuenta sabrosa!',
+    'La parada más cara del partido: el meta salva el presupuesto y la tarde.'
+  ],
+  block: [
+    '¡Billetes rechazados! La defensa cierra la ventanilla.'
+  ]
+};
+
+/** Líneas para la Vaselina (el toque angelado). */
+const VASELINA = {
+  launch: [
+    '¡VASSELINA! ¡Y con muchísimo mimo, que se puede dar por descontado!',
+    '¡Uy, uy... quiso la vaselina desde aquí!',
+    '¡VASELINA! El toque angelado del que sabe tomar café.'
+  ],
+  goal: [
+    '¡GOOOOOOL POR VASELINA! ¡El portero mira volar el balón… y no llega!',
+    '¡GOL! ¡Vaselina con receta de abuela! ¡Se pone el estadio en pie!',
+    '¡La cocina le salió al delantero: GOL con la vaselina del año!'
+  ],
+  off: [
+    'La vaselina se le fue al techo… ¡era más grito que pelota!',
+    '¡Vaselina sin gas… la pelota cae como bizcocho flojo!'
+  ],
+  save: [
+    'La vaselina llegó bonita, pero el portero tomó café frío… ¡Y LA RETIENE!',
+    '¡Vaselina, palomita… y se queda el portero con ella!'
+  ],
+  block: [
+    'La vaselina pegó en un cráneo rival: ¡se acabó el postre!'
+  ]
+};
+
 /** Frase de comentarista para un evento del motor (null si no aplica). */
 export function commentaryForEvent(s: GameState, e: GameEvent): string | null {
   switch (e.type) {
@@ -28,11 +78,18 @@ export function commentaryForEvent(s: GameState, e: GameEvent): string | null {
         '¡GOOOOOOL! ¡El Turia se sale de su cauce!',
         '¡GOL! ¡Y Mestalla se cae de la silla!',
         '¡GOOOOL! ¡Por las medias naranjas, qué manera de ponerla!',
-        '¡GOLAZO! ¡Se puede chutar así de intentado, ché!'
+        '¡GOLAZO! ¡Se puede marcar así de intentado, ché!'
       ]);
     }
     case 'shot': {
       const shooter = nameOf(s, e.shooterId);
+      const kind = e.kind;
+      const pack = kind === 'billetes' ? BILLETES : kind === 'vaselina' ? VASELINA : null;
+      if (pack) {
+        const key: 'goal' | 'save' | 'block' | 'off' =
+          e.outcome === 'goal' ? 'goal' : e.outcome === 'save' ? 'save' : e.outcome === 'block' ? 'block' : 'off';
+        return pick(pack[key]);
+      }
       if (e.outcome === 'save') {
         return pick([
           '¡Paradón del portero! ¡Qué manoplas, ché!',
@@ -69,9 +126,39 @@ export function commentaryForEvent(s: GameState, e: GameEvent): string | null {
     }
     case 'steal': {
       const d = nameOf(s, e.defenderId);
+      if (e.hachazo) {
+        return e.success
+          ? pick([
+              '¡HACHAZO! ¡' + d + ' ha metido el machete con gracia y el balón es suyo!',
+              '¡Menudo hachazo de ' + d + '! ¡Robo con matrícula de honor!',
+              '¡Hachazo de premium: ' + d + ' cobra y punto, ché!'
+            ])
+          : pick([
+              'Hachazo de ' + d + '… ¡y se le escapa el balón como billete al viento!',
+              '¡El hachazo de ' + d + ' no llega: la víctima sale volando con la pelota!'
+            ]);
+      }
       return e.success
         ? pick(['¡Roba ' + d + '! ¡Garra ché de la buena!', '¡Ladrón de guante blanco: ' + d + '!'])
         : pick(['Va a por ella ' + d + '… pero se escapa.', 'Intento de robo de ' + d + ', sin premio.']);
+    }
+    case 'meter': {
+      if (!('full' in e) || !e.full) return null;
+      const t = e.team;
+      return pick([
+        '¡BARRA LLENA del ' + sideOf(t) + ': acción especial extra en el bolsillo!',
+        '¡La barrica está llena, ' + sideOf(t) + '! A desembolsar especiales con gracia.'
+      ]);
+    }
+    case 'cut': {
+      const d = nameOf(s, e.defenderId);
+      return e.failed
+        ? pick([`${d} mira y no llega a plantarse…`, 'La ayuda de ' + d + ' no llega a tiempo.'])
+        : pick([
+            d + ' se planta al corte: ¡de aquí no pasa la pelota, ni con salmos!',
+            '¡Ojo cómo se agranda ' + d + '! Tapa líneas y no la deja pasar.',
+            d + ' lee la jugada y se planta: muralla de una finca, ché.'
+          ]);
     }
     case 'pickup': {
       const p = nameOf(s, e.playerId);
@@ -105,8 +192,14 @@ export function ambientLine(s: GameState): string {
   const score = `${s.score[0]}–${s.score[1]}`;
   if (s.phase === 'fulltime') return `El marcador final: ${score}.`;
   const carrier: Player | undefined = s.ball.carrier === null ? undefined : s.players.find((p) => p.id === s.ball.carrier);
+  const cutting = s.players.find((p) => p.stance === 'cut');
+  if (cutting && Math.random() < 0.35) {
+    return pick([
+      `Ojo a ${cutting.name}: se ha plantado al corte y el rival no la pasa por ahí…`,
+      `${cutting.name} hace de pared fantasma: tapa líneas con las pataletas.`
+    ]);
+  }
   if (carrier) {
-    void nameOf;
     return pick([
       `${carrier.name} lleva la pelota pegada a la bota…`,
       `Minuto ${min}, ${score}: la movida está en las botas de ${carrier.name}.`,
@@ -114,8 +207,8 @@ export function ambientLine(s: GameState): string {
     ]);
   }
   return pick([
-    `Balón suelto… ¡a ver quién es el más gañán!`,
+    '¡Balón suelto… a ver quién es el más gañán!',
     `Minuto ${min}, ${score}: la pelota rueda sin dueño.`,
-    `El balón duerme en el césped; alguien lo querrá despertar.`
+    'El balón duerme en el césped; alguien lo querrá despertar.'
   ]);
 }

@@ -1,14 +1,18 @@
 /**
  * Disparos: probabilidad según distancia, ángulo, atributos, presión y
- * portero; resolución en cinco resultados posibles.
+ * portero; resolución en cinco resultados posibles. Incluye los disparos
+ * especiales («Tiro Billetes»: cañonazo a distancia; «Vaselina»:
+ * golpeo angelado que burla al meta) y el efecto de los defensores que
+ * se han plantado a cortar (postura 'cut').
  * Módulo puro: modifica el GameState que recibe y devuelve el desenlace.
  */
-import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP } from './config';
+import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP, SHOT_LABEL } from './config';
 import { euclid, inField } from './field';
 import { enemyOf, isOccupied } from './rules';
-import type { Cell, GameState, Player, ShotOutcome, SoundName } from './types';
+import type { Cell, GameState, Player, ShotKind, ShotOutcome, SoundName } from './types';
 
 export interface ShotRead {
+  kind: ShotKind;
   goal: number; // 0..100
   save: number;
   block: number;
@@ -40,7 +44,10 @@ function shootingPressure(state: GameState, shooter: Player): number {
   return n;
 }
 
-/** Defensores de campo cerca de la línea de tiro (pueden bloquear). */
+/**
+ * Defensores cerca de la línea de tiro (pueden bloquear). Los que están
+ * en postura de corte tapan con más radio y más entusiasmo.
+ */
 function blockersOnLine(state: GameState, shooter: Player, target: Cell): number {
   let n = 0;
   for (const p of state.players) {
@@ -53,8 +60,10 @@ function blockersOnLine(state: GameState, shooter: Player, target: Cell): number
     if (t <= 0.05 || t >= 0.95) continue;
     const px = shooter.pos.col + t * vx;
     const py = shooter.pos.row + t * vy;
-    if (Math.hypot(p.pos.col - px, p.pos.row - py) <= 0.9) n++;
-    if (n >= 2) break;
+    const d = Math.hypot(p.pos.col - px, p.pos.row - py);
+    const radius = p.stance === 'cut' ? 1.7 : 0.9;
+    if (d <= radius) n += p.stance === 'cut' ? 2.2 : 1;
+    if (n >= 3) break;
   }
   return n;
 }
@@ -84,40 +93,92 @@ function clearDestination(state: GameState, keeper: Player, rng: () => number): 
   return candidates[idx];
 }
 
-/** Lectura de la jugada de tiro, para la previsualización de la UI y la IA. */
-export function readShot(state: GameState, shooter: Player): ShotRead {
+/**
+ * Lectura de la jugada de tiro, para la previsualización de la UI y la IA.
+ * Cada ShotKind tiene su propio talonario de probabilidades:
+ * - normal: el tiro de toda la vida.
+ * - billetes: cañonazo; la distancia pesa la mitad, pero fuera es un disparate.
+ * - vaselina: golpeo con ángulo fino; la vaselina casi no penaliza por
+ *   esquina y al portero la sufre, pero necesita más espacio libre.
+ */
+export function readShot(state: GameState, shooter: Player, kind: ShotKind = 'normal'): ShotRead {
   const target = shotTarget(state, shooter);
   const dist = euclid(shooter.pos, target);
   const dx = Math.abs(target.col - shooter.pos.col);
   const anglePenalty = Math.min(34, (Math.abs(shooter.pos.row - GOAL_CENTER_ROW) / Math.max(1, dx)) * 60);
   const pressure = shootingPressure(state, shooter) * 4;
-  const block = Math.round(Math.min(22, blockersOnLine(state, shooter, target) * 8));
+  const rawBlock = blockersOnLine(state, shooter, target);
 
   const keeper = keeperOf(state, enemyOf(shooter.team));
   const reflex = keeper ? keeper.stats.reflexes : 5;
 
-  let goal = 80 - dist * 10 + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
-  goal = Math.max(3, Math.min(82, goal));
-  const off = Math.round(Math.max(4, Math.min(30, 6 + Math.max(0, dist - 2) * 1.6 - (shooter.stats.shoot - 5) * 0.8 + anglePenalty * 0.5)));
-  const save = Math.max(0, 100 - Math.round(goal) - off - block); // restante
+  let goal: number;
+  let off: number;
+  const block = Math.round(Math.min(30, rawBlock * 8));
+
+  switch (kind) {
+    case 'billetes': {
+      // El Billetes es un cañonazo de media/larga: de cerca es tirar dinero,
+      // y lejos la factura de fuera se dispara. La distancia le pesa poco.
+      const distTerm = dist * 2.4;
+      goal = 48 - distTerm + (shooter.stats.shoot - 5) * 2.5 - anglePenalty * 0.4 - pressure * 0.9 - (reflex - 5) * 1.6;
+      goal = Math.max(6, Math.min(88, goal));
+      off = 14 + Math.max(0, dist - 2) * 2.4 - (shooter.stats.shoot - 5) * 1.4 + anglePenalty * 0.5;
+      off = Math.max(5, Math.min(55, Math.round(off)));
+      break;
+    }
+    case 'vaselina': {
+      // La vaselina se basa en el ángulo y en que el portero no llega: de
+      // frente y de lejos no justifica sus 2 AP.
+      goal = 71 - dist * 8 + (shooter.stats.shoot - 5) * 5 - anglePenalty * 0.25 - pressure * 1.7 - (reflex - 5) * 1.6;
+      goal = Math.max(3, Math.min(80, goal));
+      off = 3 + Math.max(0, dist - 2) * 1.05 - (shooter.stats.shoot - 5) * 1.05 + anglePenalty * 0.3;
+      off = Math.max(2, Math.min(28, Math.round(off)));
+      break;
+    }
+    default: {
+      goal = 80 - dist * 10 + (shooter.stats.shoot - 5) * 4.5 - anglePenalty * 0.7 - pressure - (reflex - 5) * 2.2;
+      goal = Math.max(3, Math.min(82, goal));
+      off = Math.round(Math.max(4, Math.min(30, 6 + Math.max(0, dist - 2) * 1.6 - (shooter.stats.shoot - 5) * 0.8 + anglePenalty * 0.5)));
+      break;
+    }
+  }
+  const save = Math.max(0, 100 - Math.round(goal) - Math.round(off) - block); // restante
 
   return {
+    kind,
     goal: Math.round(goal),
     save,
     block,
     off,
     dist: Math.round(dist * 10) / 10,
     anglePenalty: Math.round(anglePenalty),
-    description: shotHint(goal, dist, anglePenalty)
+    description: shotHint(kind, goal, dist, anglePenalty)
   };
 }
 
-function shotHint(goalP: number, dist: number, anglePenalty: number): string {
+function shotHint(kind: ShotKind, goalP: number, dist: number, anglePenalty: number): string {
+  switch (kind) {
+    case 'billetes':
+      if (goalP >= 38) return '¡Cañonazo con sello! A cobrarla si entra.';
+      if (dist > 6) return 'El Tiro Billetes no teme a la distancia.';
+      return 'Billetes de cerca: puro despilfarro.';
+    case 'vaselina':
+      if (goalP >= 45) return '¡Vaselina de manual! El portero sufre.';
+      if (anglePenalty > 18) return 'Vaselina aquí hace milagros con el ángulo.';
+      return 'Vaselina: bonita, pero quitando cormos.';
+    default:
+      break;
+  }
   if (goalP >= 55) return '¡Oportunidad clarísima!';
   if (goalP >= 35) return 'Buena ocasión de gol.';
   if (goalP >= 18) return 'Disparo arriesgado.';
   if (dist > 7 && anglePenalty > 20) return 'Muy lejos y en mala posición.';
   return 'Casi imposible de marcar.';
+}
+
+export function shotLabel(kind: ShotKind): string {
+  return SHOT_LABEL[kind];
 }
 
 export interface ShotResult {
@@ -135,17 +196,19 @@ export interface ShotResult {
  * - Parada o fuera: balón para el portero rival (saque de meta simplificado).
  * - Bloqueado: balón a dos casillas del tirador hacia el arco; el defensor
  *   más cercano (≤1 casilla) lo atrapa, si no queda suelto.
- * - Rebote: reservado para reglas futuras; en v1 el roll no cae aquí.
+ * - Rebote: reservado para reglas futuras; el roll no cae aquí.
  */
 export function resolveShot(
   state: GameState,
   shooter: Player,
+  kind: ShotKind,
   rng: () => number,
   sound: (n: SoundName) => void
 ): ShotResult {
-  const read = readShot(state, shooter);
+  const read = readShot(state, shooter, kind);
   const target = shotTarget(state, shooter);
   const roll = rng() * 100;
+  const soundShot: SoundName = kind === 'normal' ? 'shot' : 'shotSpecial';
 
   let acc = read.goal;
   if (roll < acc) {
@@ -188,12 +251,14 @@ export function resolveShot(
       col: Math.max(0, Math.min(FIELD_COLS - 1, shooter.pos.col + dirCol * 2)),
       row: Math.max(0, Math.min(FIELD_ROWS - 1, shooter.pos.row + dirRow))
     };
+    // Un defensor en postura de corte, en el radio del impacto, es el primero en atraparla.
     let taker: Player | null = null;
     let bestD = 2;
     for (const p of state.players) {
       if (p.team === shooter.team) continue;
       const d = Math.hypot(p.pos.col - dest.col, p.pos.row - dest.row);
-      if (d <= 1 && d < bestD) {
+      const reach = p.stance === 'cut' ? 1.4 : 1;
+      if (d <= reach && d < bestD) {
         taker = p;
         bestD = d;
       }
@@ -205,8 +270,8 @@ export function resolveShot(
       state.ball.carrier = null;
       state.ball.pos = dest;
     }
-    sound('shot');
-    return { outcome: 'block', ballDest: dest, newCarrierId: taker?.id ?? null, sound: 'shot' };
+    sound(soundShot);
+    return { outcome: 'block', ballDest: dest, newCarrierId: taker?.id ?? null, sound: soundShot };
   }
 
   // Fuera: saque de meta simplificado -> portero rival
@@ -216,6 +281,6 @@ export function resolveShot(
     state.ball.carrier = keeper.id;
     state.ball.pos = { ...keeper.pos };
   }
-  sound('shot');
-  return { outcome: 'off', ballDest: keeper?.pos ?? null, newCarrierId: keeper?.id ?? null, sound: 'shot' };
+  sound(soundShot);
+  return { outcome: 'off', ballDest: keeper?.pos ?? null, newCarrierId: keeper?.id ?? null, sound: soundShot };
 }

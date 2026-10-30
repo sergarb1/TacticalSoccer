@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import {
   VB_W, VB_H, ISO_MATRIX, allBoardCells, cellToPx, cellPoly, svgToCell
 } from '../composables/boardLayout';
-import { GOAL_ROWS } from '../game/config';
+import { FIELD_COLS, FIELD_ROWS, GOAL_CENTER_ROW } from '../game/config';
 import PlayerToken from './PlayerToken.vue';
 import type { GameState, Player, Cell } from '../game/types';
 
@@ -22,6 +22,12 @@ const emit = defineEmits<{
   (e: 'cell-click', cell: Cell): void;
   (e: 'token-click', id: number): void;
 }>();
+
+/* --- dimensiones del campo (derivadas de config, nunca fijas) --- */
+const C = FIELD_COLS;
+const R = FIELD_ROWS;
+const MID_X = C / 2;
+const MID_Y = R / 2;
 
 /* --- césped en rombos (tablero de ajedrez isométrico) --- */
 const cells = allBoardCells();
@@ -85,7 +91,10 @@ const passLines = computed<PassLine[]>(() => {
 
 /** side del arco atacado por el equipo en turno (0=arco derecho, 1=izquierdo). */
 const attackRight = computed(() => props.state.currentTeam === 0);
-const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x: 210, y: 148 }));
+const goalHintPos = computed(() => {
+  const g = cellToPx({ col: attackRight.value ? C : 0, row: GOAL_CENTER_ROW });
+  return attackRight.value ? { x: g.x + 96, y: g.y - 46 } : { x: g.x - 96, y: g.y - 46 };
+});
 </script>
 
 <template>
@@ -109,7 +118,7 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
       <!-- proyección isométrica del campo: todo en espacio-casilla -->
       <g :transform="ISO_MATRIX">
         <!-- césped exterior -->
-        <rect x="-0.45" y="-0.25" width="9.9" height="5.5" fill="#0f2d1c" />
+        <rect x="-0.45" y="-0.25" :width="C + 0.9" :height="R + 0.5" fill="#0f2d1c" />
         <!-- césped a cuadros -->
         <rect
           v-for="c in cells"
@@ -123,29 +132,29 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
 
         <!-- líneas blancas del campo -->
         <g stroke="var(--line)" fill="none" stroke-width="2.6" vector-effect="non-scaling-stroke">
-          <rect x="0" y="0" width="9" height="5" vector-effect="non-scaling-stroke" />
-          <line x1="4.5" y1="0" x2="4.5" y2="5" vector-effect="non-scaling-stroke" />
-          <circle cx="4.5" cy="2.5" r="1.1" vector-effect="non-scaling-stroke" />
-          <rect x="0" y="1" width="2.4" height="3" vector-effect="non-scaling-stroke" />
-          <rect x="6.6" y="1" width="2.4" height="3" vector-effect="non-scaling-stroke" />
-          <path d="M 2.4 1.9 A 0.72 0.72 0 0 1 2.4 3.1" vector-effect="non-scaling-stroke" />
-          <path d="M 6.6 1.9 A 0.72 0.72 0 0 0 6.6 3.1" vector-effect="non-scaling-stroke" />
+          <rect x="0" y="0" :width="C" :height="R" vector-effect="non-scaling-stroke" />
+          <line :x1="MID_X" y1="0" :x2="MID_X" :y2="R" vector-effect="non-scaling-stroke" />
+          <circle :cx="MID_X" :cy="MID_Y" r="1.15" vector-effect="non-scaling-stroke" />
+          <rect x="0" y="1" width="2.4" :height="R - 2" vector-effect="non-scaling-stroke" />
+          <rect :x="C - 2.4" y="1" width="2.4" :height="R - 2" vector-effect="non-scaling-stroke" />
+          <path :d="`M 2.4 ${MID_Y - 0.6} A 0.72 0.72 0 0 1 2.4 ${MID_Y + 0.6}`" vector-effect="non-scaling-stroke" />
+          <path :d="`M ${C - 2.4} ${MID_Y - 0.6} A 0.72 0.72 0 0 0 ${C - 2.4} ${MID_Y + 0.6}`" vector-effect="non-scaling-stroke" />
         </g>
-        <circle cx="4.5" cy="2.5" r="0.06" fill="var(--line)" />
-        <circle cx="2.1" cy="2.5" r="0.06" fill="var(--line)" />
-        <circle cx="6.9" cy="2.5" r="0.06" fill="var(--line)" />
+        <circle :cx="MID_X" :cy="MID_Y" r="0.06" fill="var(--line)" />
+        <circle cx="2.1" :cy="MID_Y" r="0.06" fill="var(--line)" />
+        <circle :cx="C - 2.1" :cy="MID_Y" r="0.06" fill="var(--line)" />
 
         <!-- porterías pequeñas con red (alto de GOAL_ROWS) -->
         <g>
-          <rect x="-0.45" :y="GOAL_ROWS[0]" width="0.45" :height="GOAL_ROWS.length" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
+          <rect x="-0.45" :y="GOAL_CENTER_ROW" width="0.45" height="1" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
           <g stroke="rgba(240,248,244,0.45)" stroke-width="1" vector-effect="non-scaling-stroke">
-            <line v-for="n in 3" :key="`nvL${n}`" :x1="-0.45 + (n * 0.45) / 4" :y1="GOAL_ROWS[0]" :x2="-0.45 + (n * 0.45) / 4" :y2="GOAL_ROWS[0] + GOAL_ROWS.length" vector-effect="non-scaling-stroke" />
-            <line v-for="n in 2" :key="`nhL${n}`" :x1="-0.45" :y1="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" x2="0" :y2="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 3" :key="`nvL${n}`" :x1="-0.45 + (n * 0.45) / 4" :y1="GOAL_CENTER_ROW" :x2="-0.45 + (n * 0.45) / 4" :y2="GOAL_CENTER_ROW + 1" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 2" :key="`nhL${n}`" :x1="-0.45" :y1="GOAL_CENTER_ROW + n / 3" x2="0" :y2="GOAL_CENTER_ROW + n / 3" vector-effect="non-scaling-stroke" />
           </g>
-          <rect x="9" :y="GOAL_ROWS[0]" width="0.45" :height="GOAL_ROWS.length" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
+          <rect :x="C" :y="GOAL_CENTER_ROW" width="0.45" height="1" fill="rgba(240,248,244,0.2)" stroke="var(--line)" stroke-width="2" vector-effect="non-scaling-stroke" />
           <g stroke="rgba(240,248,244,0.45)" stroke-width="1" vector-effect="non-scaling-stroke">
-            <line v-for="n in 3" :key="`nvR${n}`" :x1="9 + (n * 0.45) / 4" :y1="GOAL_ROWS[0]" :x2="9 + (n * 0.45) / 4" :y2="GOAL_ROWS[0] + GOAL_ROWS.length" vector-effect="non-scaling-stroke" />
-            <line v-for="n in 2" :key="`nhR${n}`" :x1="9" :y1="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" x2="9.45" :y2="GOAL_ROWS[0] + (n * GOAL_ROWS.length) / 3" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 3" :key="`nvR${n}`" :x1="C + (n * 0.45) / 4" :y1="GOAL_CENTER_ROW" :x2="C + (n * 0.45) / 4" :y2="GOAL_CENTER_ROW + 1" vector-effect="non-scaling-stroke" />
+            <line v-for="n in 2" :key="`nhR${n}`" :x1="C" :y1="GOAL_CENTER_ROW + n / 3" :x2="C + 0.45" :y2="GOAL_CENTER_ROW + n / 3" vector-effect="non-scaling-stroke" />
           </g>
         </g>
 
@@ -153,10 +162,10 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
         <g v-if="shotArmed && shotPercent !== null" pointer-events="none">
           <rect
             v-if="attackRight"
-            x="8.9"
-            :y="GOAL_ROWS[0] - 0.2"
+            :x="C - 0.1"
+            :y="GOAL_CENTER_ROW - 0.2"
             width="0.62"
-            :height="GOAL_ROWS.length + 0.4"
+            height="1.4"
             fill="none"
             stroke="var(--gold)"
             stroke-width="3"
@@ -165,10 +174,10 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
           />
           <rect
             v-else
-            x="-0.52"
-            :y="GOAL_ROWS[0] - 0.2"
+            :x="-0.52"
+            :y="GOAL_CENTER_ROW - 0.2"
             width="0.62"
-            :height="GOAL_ROWS.length + 0.4"
+            height="1.4"
             fill="none"
             stroke="var(--gold)"
             stroke-width="3"
@@ -183,7 +192,7 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
         v-if="shotArmed && shotPercent !== null"
         :x="goalHintPos.x"
         :y="goalHintPos.y"
-        font-size="20"
+        font-size="24"
         font-weight="800"
         fill="var(--gold)"
         text-anchor="middle"
@@ -199,7 +208,7 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
           v-for="hl in highlightsShown"
           :key="`hl-${hl.col}-${hl.row}`"
           :points="cellPoly(hl)"
-          class="hl-cell"
+          class="hl-cell breathe"
           fill="rgba(255,255,255,0.25)"
           stroke="rgba(255,255,255,0.7)"
           stroke-width="1.6"
@@ -216,6 +225,7 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
             :y1="l.y1"
             :x2="l.x2"
             :y2="l.y2"
+            class="pass-line"
             :stroke="l.chance >= 65 ? '#8ff0a0' : l.chance >= 40 ? 'var(--gold)' : 'var(--danger)'"
             stroke-width="3"
             stroke-dasharray="8 6"
@@ -223,7 +233,7 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
           />
           <text
             :x="(l.x1 + l.x2) / 2"
-            :y="(l.y1 + l.y2) / 2 - 10"
+            :y="(l.x1 + l.x2) / 2 - 10"
             font-size="16"
             font-weight="800"
             fill="#0e1f16"
@@ -242,6 +252,7 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
         :selected="p.id === selectedId"
         :is-carrier="state.ball.carrier === p.id"
         :is-turn-of="p.team === state.currentTeam"
+        :is-cutting="p.stance === 'cut'"
         @token-click="(id: number) => emit('token-click', id)"
       />
 
@@ -256,8 +267,8 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
         stroke-dasharray="7 6"
       />
 
-      <!-- balón (grande, con sombra y brillo) -->
-      <g v-if="showGroundBall" class="ball-g" pointer-events="none">
+      <!-- balón (grande, con sombra y brillo; el vuelo se traslada suave) -->
+      <g v-if="showGroundBall" class="ball-g" :class="{ fly: ballFx !== null }" pointer-events="none">
         <g :transform="`translate(${ballPos.x},${ballPos.y - 24})`">
           <ellipse cy="26" rx="10" ry="4.6" fill="rgba(0,0,0,0.45)" />
           <circle r="10.5" fill="#fdfdfd" stroke="#181818" stroke-width="1.6" />
@@ -291,8 +302,30 @@ const goalHintPos = computed(() => (attackRight.value ? { x: 800, y: 355 } : { x
   fill: rgba(255, 255, 255, 0.45);
 }
 .loose-ring {
-  animation: pulse-ring 1.3s ease-in-out infinite;
+  animation: pulse-ring 1.3s ease-in-out infinite, dash-march 1.4s linear infinite;
   pointer-events: none;
+}
+.pass-line { animation: dash-march 0.9s linear infinite; pointer-events: none; }
+/* el balón en vuelo se traslada con una curva suave (transition de transform) */
+.ball-g { transition: transform 0.32s cubic-bezier(0.35, 1.2, 0.45, 1); }
+.ball-g.fly circle { animation: ball-squish 0.5s ease-in-out; transform-box: fill-box; transform-origin: center; }
+.hl-cell.breathe { animation: hl-breathe 1.5s ease-in-out infinite; }
+@keyframes dash-march {
+  to { stroke-dashoffset: -28; }
+}
+@keyframes hl-breathe {
+  0%, 100% { fill-opacity: 0.75; }
+  50% { fill-opacity: 1; stroke-opacity: 0.5; }
+}
+@keyframes ball-squish {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.82, 1.12); }
+  60% { transform: scale(1.1, 0.9); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loose-ring, .pass-line, .hl-cell.breathe, .ball-g.fly circle { animation: none; }
+  .ball-g { transition: none; }
 }
 @keyframes pulse-ring {
   0%, 100% { stroke-opacity: 1; }

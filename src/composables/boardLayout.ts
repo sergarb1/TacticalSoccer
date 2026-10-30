@@ -2,24 +2,40 @@
  * Geometría de pintado del tablero (SVG) con proyección isométrica.
  * Solo la capa visual: el motor trabaja en casillas enteras; aquí las
  * convertimos a píxeles (rombos 2:1) y de vuelta con la misma matemática.
+ * Todas las medidas se derivan de las dimensiones del campo en config,
+ * así que cambiar el tamaño del campo no rompe la vista.
  */
+import { FIELD_COLS, FIELD_ROWS } from '../game/config';
 
-export const COLS = 9;
-export const ROWS = 5;
+export const COLS = FIELD_COLS;
+export const ROWS = FIELD_ROWS;
 
 /** Diagonal horizontal del rombo (px). */
 export const TILE_W = 124;
 /** Diagonal vertical del rombo (px). */
 export const TILE_H = 64;
-const HW = TILE_W / 2; // 62
-const HH = TILE_H / 2; // 32
+const HW = TILE_W / 2;
+const HH = TILE_H / 2;
+
+/** Margen de aire alrededor del campo (px de viewBox). */
+const MARGIN_X = 34;
+const MARGIN_TOP = 62; // deja sitio a las fichas por encima del vértice norte
+
+/** El césped exterior sobresale del área de juego en unidades de casilla. */
+const GRASS_PAD_X = 0.45;
+const GRASS_PAD_Y = 0.25;
 
 /** Origen de la proyección en el viewBox. */
-export const OX = 380;
-export const OY = 52;
+export const OX = Math.round(MARGIN_X + HW * (ROWS - 1 + GRASS_PAD_X + GRASS_PAD_Y));
+export const OY = MARGIN_TOP;
 
-export const VB_W = 1010;
-export const VB_H = 556;
+/** Extensión horizontal del campo (con el césped) en unidades de casilla. */
+const SPAN_X = COLS + ROWS - 2 + (GRASS_PAD_X + GRASS_PAD_Y) * 2;
+/** Extensión vertical del campo (con el césped) en unidades de casilla. */
+const SPAN_Y = COLS + ROWS - 2 + 1.35;
+
+export const VB_W = Math.round(MARGIN_X * 2 + HW * SPAN_X);
+export const VB_H = Math.round(OY + HH * SPAN_Y + 36);
 
 /** Radio de las fichas de jugador. */
 export const TOKEN_R = 21;

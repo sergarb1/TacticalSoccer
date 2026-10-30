@@ -27,6 +27,9 @@ export interface Cell {
   row: number;
 }
 
+/** Postura defensiva activa: 'cut' = plantado para cortar pases/tiros rivales. */
+export type Stance = 'none' | 'cut';
+
 export interface Player {
   id: number;
   team: TeamId;
@@ -38,6 +41,8 @@ export interface Player {
   /** Indicadores por turno: se limpian en cada cambio de turno. */
   hasMoved: boolean;
   hasActed: boolean;
+  /** Postura defensiva elegida (persiste durante el turno del rival). */
+  stance: Stance;
 }
 
 export interface Ball {
@@ -86,6 +91,10 @@ export interface GameState {
   v: 1;
   config: MatchConfig;
   phase: Phase;
+  /** Segmentos de la barra de acciones especiales (0..METER_MAX). */
+  meter: [number, number];
+  /** Usos de acciones especiales restantes por equipo (Billetes, Vaselina, Hachazo). */
+  specials: [number, number];
   currentTeam: TeamId;
   /** Puntos de acción disponibles para currentTeam. */
   ap: number;
@@ -107,15 +116,21 @@ export interface GameState {
 }
 
 /** Acciones que puede solicitar la UI o la IA sobre el estado. */
-export type ActionType = 'move' | 'pass' | 'shoot' | 'steal';
+export type ActionType = 'move' | 'pass' | 'shoot' | 'steal' | 'cut';
+
+/** Tipos de disparo: normal, cañonazo «Tiro Billetes» y «Vaselina». */
+export type ShotKind = 'normal' | 'billetes' | 'vaselina';
 
 /** Eventos replicados a la UI para animaciones y sonidos. */
 export type GameEvent =
   | { type: 'move'; playerId: number; path: Cell[]; team: TeamId }
   | { type: 'pass'; from: Cell; to: Cell; success: boolean; midpoint: Cell }
-  | { type: 'shot'; shooterId: number; target: Cell; outcome: ShotOutcome; ballDest: Cell | null; goal: boolean }
-  | { type: 'steal'; defenderId: number; success: boolean }
+  | { type: 'shot'; shooterId: number; kind: ShotKind; target: Cell; outcome: ShotOutcome; ballDest: Cell | null; goal: boolean }
+  | { type: 'steal'; defenderId: number; success: boolean; hachazo?: boolean }
+  | { type: 'cut'; defenderId: number; failed: boolean }
   | { type: 'pickup'; playerId: number }
+  /** La barra llena concede una acción especial extra. */
+  | { type: 'meter'; team: TeamId; meter: number; full: boolean }
   | { type: 'goal'; team: TeamId }
   | { type: 'turn'; team: TeamId }
   | { type: 'halftime' }
@@ -126,14 +141,14 @@ export type GameEvent =
 
 export type ShotOutcome = 'goal' | 'save' | 'off' | 'block' | 'rebound';
 export type SoundName =
-  | 'move' | 'pass' | 'passFail' | 'shot' | 'goal' | 'save'
-  | 'steal' | 'stealFail' | 'turn' | 'pickup' | 'kickoff' | 'fulltime';
+  | 'move' | 'pass' | 'passFail' | 'shot' | 'shotSpecial' | 'goal' | 'save'
+  | 'steal' | 'stealFail' | 'cut' | 'turn' | 'pickup' | 'kickoff' | 'fulltime';
 
 /** Resultado estándar de una acción del motor. */
 export interface ActionResult {
   ok: boolean;
   /** Código machine-legible del error (para la UI). */
-  code?: MoveErrorCode | PassErrorCode | ShootErrorCode | StealErrorCode | string;
+  code?: MoveErrorCode | PassErrorCode | ShootErrorCode | StealErrorCode | CutErrorCode | string;
   message: string;
   events: GameEvent[];
 }
@@ -144,6 +159,12 @@ export type MoveErrorCode =
 export type PassErrorCode =
   | 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted'
   | 'no_ball' | 'bad_target' | 'too_far' | 'unknown_player';
-export type ShootErrorCode = 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted' | 'no_ball';
+export type ShootErrorCode =
+  | 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted' | 'no_ball' | 'no_special';
 export type StealErrorCode =
   | 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted' | 'no_carrier' | 'too_far' | 'same_team';
+export type HackErrorCode =
+  | 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted' | 'no_carrier'
+  | 'too_far' | 'same_team' | 'no_special';
+export type CutErrorCode =
+  | 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted' | 'no_carrier' | 'too_far' | 'unknown_player';

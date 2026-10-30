@@ -5,12 +5,13 @@
  */
 import { computed, reactive, ref } from 'vue';
 import {
-  createMatch, doMove, doPass, doShoot, doSteal, endTurn, teamLabel
+  createMatch, doMove, doPass, doShoot, doSteal, doCut, doHack, endTurn, teamLabel
 } from '../game/match';
 import { reachable } from '../game/movement';
 import { passOptionsFor } from '../game/passing';
 import { readShot } from '../game/shooting';
-import { stealChance, stealTargets } from '../game/defense';
+import { stealChance, stealTargets, cutTargets, hackTargets } from '../game/defense';
+import { CUT_RANGE, HACK_RANGE, HACK_BONUS } from '../game/config';
 import { getPlayer } from '../game/rules';
 import { playSound } from '../game/sounds';
 import { saveMatch, clearSavedMatch, loadSavedMatch } from '../game/serialize';
@@ -18,9 +19,9 @@ import { useSettings } from './useSettings';
 import { nextAiAction } from '../ai/strategy';
 import type { AiDecision } from '../ai/strategy';
 import { commentaryForEvent, ambientLine, type Line } from '../game/commentary';
-import type { Cell, GameEvent, GameState, MatchConfig } from '../game/types';
+import type { Cell, GameEvent, GameState, MatchConfig, ShotKind } from '../game/types';
 
-export type InteractionMode = 'idle' | 'moving' | 'passing' | 'stealing' | 'shooting';
+export type InteractionMode = 'idle' | 'moving' | 'passing' | 'stealing' | 'shooting' | 'cutting' | 'hacking';
 
 export interface UiState {
   selectedId: number | null;
@@ -93,8 +94,9 @@ function applyEvents(events: GameEvent[]): void {
       g.ballFx.value = { target: e.outcome === 'goal' ? e.target : e.ballDest, until: Date.now() };
       window.setTimeout(() => (g.ballFx.value = null), duration(520) + 20);
     }
-    // narración: el evento 'goal' ya narra el gol; el resto de disparos sí
-    if (s && !(e.type === 'shot' && e.outcome === 'goal')) {
+    // narración: el 'shot' narra también los goles (con el tipo de tiro);
+    // el evento 'goal' simple se deja al banner
+    if (s && !(e.type === 'shot' && e.outcome === 'goal' && e.kind === 'normal')) {
       const line = commentaryForEvent(s, e);
       if (line) pushLine(line, 'event');
     }
@@ -238,6 +240,23 @@ export function shotPreview(): { goal: number; description: string } | null {
   return { goal: read.goal, description: read.description };
 }
 
+/** Las tres previsualizaciones de disparo del jugador seleccionado. */
+export function shotPreviews(): {
+  normal: { goal: number; description: string } | null;
+  billetes: { goal: number; description: string } | null;
+  vaselina: { goal: number; description: string } | null;
+} | null {
+  const s = g.state.value;
+  if (!s || g.ui.selectedId === null) return null;
+  const p = getPlayer(s, g.ui.selectedId)!;
+  if (s.ball.carrier !== p.id) return null;
+  const r = (k: ShotKind) => {
+    const read = readShot(s, p, k);
+    return { goal: read.goal, description: read.description };
+  };
+  return { normal: r('normal'), billetes: r('billetes'), vaselina: r('vaselina') };
+}
+
 export function actionShotArm(): void {
   const s = g.state.value;
   if (!s || g.ui.selectedId === null) {
@@ -246,10 +265,10 @@ export function actionShotArm(): void {
   g.ui.mode = 'shooting';
 }
 
-export function actionShotConfirm(): boolean {
+export function actionShotConfirm(kind: ShotKind = 'normal'): boolean {
   const s = g.state.value;
   if (!s || g.ui.selectedId === null) return false;
-  const res = doShoot(s, g.ui.selectedId);
+  const res = doShoot(s, g.ui.selectedId, kind);
   if (res.ok) {
     applyEvents(res.events);
     saveMatch(s);
@@ -283,6 +302,60 @@ export function stealOpportunities(): Array<{ victimId: number; chance: number; 
     chance: stealChance(s, d, v),
     name: v.name
   }));
+}
+
+/** Rivales con balón al alcance del hachazo y con su probabilidad premium. */
+export function hackOpportunities(): Array<{ victimId: number; chance: number; name: string; dist: number }> {
+  const s = g.state.value;
+  if (!s || g.ui.selectedId === null) return [];
+  const d = getPlayer(s, g.ui.selectedId)!;
+  return hackTargets(s, d).map((v) => ({
+    victimId: v.id,
+    chance: Math.min(95, stealChance(s, d, v) + HACK_BONUS),
+    name: v.name,
+    dist: Math.max(Math.abs(d.pos.col - v.pos.col), Math.abs(d.pos.row - v.pos.row))
+  }));
+}
+
+/** «Hachazo»: robo premium, gasta 1 AP y una acción especial. */
+export function actionHack(victimId: number): boolean {
+  const s = g.state.value;
+  if (!s || g.ui.selectedId === null) return false;
+  const res = doHack(s, g.ui.selectedId, victimId);
+  if (res.ok) {
+    applyEvents(res.events);
+    saveMatch(s);
+    setMode('idle');
+    return true;
+  }
+  setMode('idle');
+  return false;
+}
+
+/** Rivales con balón al alcance del corte y a cuántas casillas. */
+export function cutOpportunities(): Array<{ carrierId: number; name: string; dist: number }> {
+  const s = g.state.value;
+  if (!s || g.ui.selectedId === null) return [];
+  const d = getPlayer(s, g.ui.selectedId)!;
+  return cutTargets(s, d).map((c) => ({
+    carrierId: c.id,
+    name: c.name,
+    dist: Math.max(Math.abs(d.pos.col - c.pos.col), Math.abs(d.pos.row - c.pos.row))
+  }));
+}
+
+/** Se planta a cortar (postura que cubre el turno rival). */
+export function actionCut(): boolean {
+  const s = g.state.value;
+  if (!s || g.ui.selectedId === null) return false;
+  const res = doCut(s, g.ui.selectedId);
+  if (res.ok) {
+    applyEvents(res.events);
+    saveMatch(s);
+    setMode('idle');
+    return true;
+  }
+  return false;
 }
 
 export function finishTurn(): boolean {
@@ -333,8 +406,9 @@ async function runAiTurn(): Promise<void> {
       switch (d.kind) {
         case 'move': ok = doMove(s, d.playerId, d.dest).ok; break;
         case 'pass': ok = doPass(s, d.playerId, d.targetId).ok; break;
-        case 'shoot': ok = doShoot(s, d.playerId).ok; break;
+        case 'shoot': ok = doShoot(s, d.playerId, d.shotKind ?? 'normal').ok; break;
         case 'steal': ok = doSteal(s, d.playerId, d.victimId).ok; break;
+        case 'hack': ok = doHack(s, d.playerId, d.victimId).ok; break;
       }
       if (!ok) break;
       saveMatch(s);

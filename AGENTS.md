@@ -37,10 +37,14 @@ deben seguir pasando.
 - **Todo el texto visible está en español** (con sabor intencionalmente valencianista,
   «Gañan Edition»). Mantén ese tono en la UI y en la narración
   (`src/game/commentary.ts`, puramente cosmética: NUNCA debe afectar al motor ni al RNG).
-- Formato del campo: 9 columnas × 5 filas, portería de 1 casilla en la fila
-  `GOAL_CENTER_ROW`, 5 jugadores por equipo (1 POR + 4 de campo), 3 AP por turno.
-  `src/game/serialize.ts` valida esa estructura: si cambias el formato, actualiza el
-  validador Y las partidas guardadas deben seguir cargando o descartarse con gracia.
+- Formato del campo: 13 columnas × 7 filas (campo grande con más alcance de
+  movimiento y pase), portería de 1 casilla en la fila `GOAL_CENTER_ROW`,
+  5 jugadores por equipo (1 POR + 4 de campo), 3 AP por turno, tiros
+  especiales «Tiro Billetes» y «Vaselina» (2 AP) y postura de corte (`cut`)
+  como acción defensiva. `src/game/serialize.ts` valida esa estructura: si
+  cambias el formato, actualiza el validador (y sube la clave de
+  `STORAGE_KEYS` cuando el cambio sea incompatible) para que las partidas
+  guardadas se descarten con gracia.
 - **Comentarios y commits en español**; títulos de commit cortos y descriptivos.
 - Los nombres de los futbolistas son homenajes ficticios (leyendas del Valencia CF);
   no usar nombres reales de jugadores activos ni escudos/marcas reales.
