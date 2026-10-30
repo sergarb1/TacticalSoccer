@@ -13,59 +13,82 @@ Juego de fútbol táctico **5v5** por turnos:
   1 casilla con red, arcos de penalti, líneas reglamentarias). Alcance de
   movimiento 2 + velocidad/4 y de pase 3 + pase/2 para compensar el tamaño.
 - **Sprites de jugadores** del pack *Sports Pack* de Kenney (CC0), escalados y
-  con anillo de equipo, dorsal y halo verde de «corte" (`public/sprites/`).
-- **3 AP por turno**, 30 turnos (2 partes de 15), 4 formaciones 5v5.
-- **Tiros especiales**: «Tiro Billetes» (2 AP: la distancia penaliza la mitad,
-  más riesgo de fuera) y «Vaselina» (2 AP: burla ángulo y portero, necesita
-  espacio). Panel con % de gol de cada golpeo y narración propia.
-- **«Cortar»** (1 AP): postura defensiva que tapa pases (radio ×2) y bloquea
-  tiros del rival durante su turno; se disuelve al llegar tu turno (`Player.stance`).
-- **Narración** abajo, ampliada (dos líneas visibles, tipografía mayor y minuto
-  grande), con líneas nuevas para billetes/vaselina/cortes.
+  con anillo de equipo, dorsal y halo verde de «corte» (`public/sprites/`).
+- **3 AP por turno**, 30 turnos (2 partes de 15), 8 equipos ficticios y
+  formaciones 5v5.
+- **Tiros especiales**, con modal animado propio y barras de especiales que se
+  llenan con goles encajados/especiales y robos: «Tiro Billetes» (2 AP), 
+  «Vaselina» (2 AP) y «Hachazo» robador premium (1 AP + uso especial). El panel
+  muestra el % de gol de cada golpeo con iconos.
+- **Defensa**: «Cortar» (postura que tapa pases y tiros), «Endurecer» (1 PA:
+  robos/cortes/tapones reforzados durante el turno rival) y castigo al portero
+  despistado (a 2+ casillas de su arco, cada casilla regala +6% de gol, tope 18%).
+- **Saque de centro** para el equipo que encaja el gol; a mitad de parte saca
+  el visitante.
+- **Tanda de penaltis jugable en el tablero** (`src/game/penalties.ts`): el
+  portero dispone de 1 PA para adivinar la esquina y el lanzador de 3 PA para
+  moverse y fusilar; con banner dramático (penalti/gol/paradón/tanda decidida),
+  silbato, gruñido del estadio y fanfarria final.
+- **Copa Capello** 🏆 (`src/game/cup.ts` + `useCup` + `CupScreen.vue`): 8 equipos,
+  cuartos/semifinal/final; los cruces no jugados por el usuario se simulan con el
+  mismo motor y los empates van a la tanda de penaltis.
+- **Liga Gañán** 🏅 (`src/game/league.ts` + `useLeague` + `LeagueScreen.vue`):
+  8 equipos a una vuelta (7 jornadas), 3/1 puntos, sin penaltis; tabla con
+  clasificación ordenada por puntos, diferencia y goles.
+- **Modo IA vs IA (espectador)**: la máquina dirige a ambos equipos.
+- **Palmarés** (`records.ts`): victorias, racha, copas ganadas y MVP del partido:
+  cargado en las pantallas que lo usan.
+- **Compartir y retar**: botón «Compartir» (API nativa/portapapeles) con
+  tablón del resultado y «código del reto» de 7 símbolos (`seedcode.ts`) para
+  rejugar la misma partida; caja para pegar el código en la preparación.
+- **Narración** arriba (barra fija) con comentarista gamberro: líneas para
+  especiales, cortes, endurecer, quejas de grada según marcador y minuto.
+- **Meteoros cosméticos**: soleado/noche/atardecer/lluvia decididos por la
+  semilla del partido (clases `weather-*`, nunca afectan al motor).
 - **Plataformas**: escritorio y móvil (layout táctil, botones ≥44px, vibración
   háptica configurable, área segura iPhone).
-- **Plantillas**: Garra Che, Muro Che, Turia FC, Litoral Che — nombres de
-  leyendas valencianistas ficticias.
-- **Guardar/continuar** partida en `localStorage` (clave v2: el cambio de campo
-  descarta con gracia las partidas del formato 9×5); tutorial de 7 pasos.
-- **Despeje del portero**: tras parar hay un 38% de palmada lejos (balón suelto)
-  en vez de retención.
-- **Tanda de penaltis** determinista en pantalla final si hay empate
-  (`MatchResult.vue`, derivada del estado, estable en rerenders).
+- **Guardar/continuar** partida en `localStorage`; tutorial de 7 pasos.
+- **PWA**: instalable (`manifest.webmanifest`, icono SVG, `theme-color`) y con
+  service worker de caché runtime (`public/sw.js`, solo se registra en prod).
 
 ## Verificación en vigor
 
-- **34/34 pruebas de Vitest** (motor jugado por eventos + invariantes de IA en
-  partidas completas, 3 niveles, con semilla; incluye coste/alcance del Tiro
-  Billetes, Vaselina por ángulo y postura de corte).
+- **40/40 pruebas de Vitest** (`tests/engine.spec.ts`, `tests/ai.spec.ts`,
+  `tests/cup.spec.ts`): motor jugado por eventos + invariantes de IA en partidas
+  completas (3 niveles, con semilla) + copa completa con tanda y penaltis.
 - `vue-tsc --noEmit` sin errores.
-- Build de producción OK (bundle ~157 kB JS / 16 kB CSS + sprites).
+- Build de producción OK (~208 kB JS / 27 kB CSS + sprites; caché SW en prod).
 
-## Cambios recientes (última ronda)
+## Cambios recientes (últimas rondas)
 
-1. Subtítulo «Gañan Edition» (index.html, menú, README).
-2. Tipografía **Bebas Neue** (SIL OFL) autoalojada en `public/fonts/`.
-3. Sonidos **CC0 de Kenney** (Ultrasound) en `public/sfx/` con respaldo
-   sintetizado WebAudio (`src/game/sounds.ts`).
-4. Despeje del portero + test.
-5. Transición de fichas (`PlayerToken.vue` con `transform` por style) y
-   vibración háptica (`useGame.ts`/`useSettings.ts`).
+1. Copa Capello + penaltis 1v1 jugables + modo IA vs IA + «Endurecer defensa».
+2. Drama de tanda: banner gigante por lanzamiento y desenlace; sonidos nuevos
+   (silbato, gruñido, fanfarria).
+3. Modal animado de especiales (Billetes/Vaselina/Hachazo) + saque del que
+   encaja + castigo al portero lejano (constantes `FAR_KEEPER_*`).
+4. Liga Gañán completa + palmarés/racha/MVP + compartir + retos por semilla.
+5. Comentarista gamberro y meteoros cosméticos.
+6. PWA instalable con offline (SW solo en producción).
 
 ## Pendiente / ideas propu
 
 Por orden de impacto estimado:
 
+- [ ] **Palmarés visible en el menú principal** (los datos ya están en
+      `records.ts`; falta pintar tarjetita con copas, racha y último MVP).
+- [ ] **IA que recoloca al portero** cuando el rival se acerca (para que el
+      castigo al portero lejano muerda en IA vs IA).
+- [ ] **Uso de la barra de especiales en la UI** del panel (mostrar usos
+      restantes por tipo de especial junto al % ).
+- [ ] **Aviso de instalación PWA** («añadir a pantalla de inicio») con
+      `beforeinstallprompt`.
 - [ ] **Resistencia con efecto real por jugador** (ahora solo penalización
       global aproximada en la 2ª parte).
 - [ ] **Fueras de banda y saques de esquina** (limitación conocida declarada
       en README).
-- [ ] **Más formaciones o catálogo de equipos** (4 ahora).
-- [ ] **Tutorial ampliable** (app.vue, 7 pasos hardcodeados).
 - [ ] **Modo valenciano** del narrador (solo español ahora).
-- [ ] **Test de MatchResult** (la tanda de penaltis no está cubierta por
-      pruebas; es código de UI puro).
-- [ ] **Replays/posiciones** (el minimapa no es cliclo para seleccionar en
-      pantallas grandes… está oculto en móvil).
+- [ ] **Test de MatchResult** (la pantalla final sigue siendo código de UI
+      puro sin pruebas; su tanda de penaltis cosmética tampoco).
 
 ## Cómo publicar
 
@@ -79,3 +102,5 @@ sergarb1/TacticalSoccer` (o la pestaña Actions) hasta ver `completed success`.
 2. Ejecuta `npx vitest run && npx vue-tsc --noEmit && npm run build`.
 3. `npm run dev` para tocar la UI; el motor se prueba contra `tests/`.
 4. No toques licencias de assets sin actualizar `ATTRIBUTIONS.md`.
+5. La cosmética (banners, modal, meteoros, narración) vive aparte del motor:
+   no la mezcles con la lógica del juego.
