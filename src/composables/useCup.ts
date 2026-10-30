@@ -6,9 +6,11 @@
 import { computed, ref } from 'vue';
 import { STORAGE_KEYS } from '../game/config';
 import {
-  createCup, setCupResult, simulateAiMatch, userMatchConfig, userPair
+  createCup, setCupResult, simulateAiMatch, userMatchConfig, userPair, cupTeamName
 } from '../game/cup';
 import type { CupState } from '../game/cup';
+import { recordCupWin } from '../game/records';
+import { teamById } from '../game/formations';
 import type { AiLevel, MatchConfig, TeamId } from '../game/types';
 
 const cup = ref<CupState | null>(null);
@@ -70,6 +72,17 @@ export function recordUserResult(score: [number, number], winner: TeamId, pens: 
   const winnerId = winner === 0 ? c.userTeam : (up.pair.a === c.userTeam ? up.pair.b : up.pair.a);
   setCupResult(c, up.index, winnerId, score, pens);
   persist();
+  // ¿Se lleva la copa? Apunta el trofeo en el palmarés del gañán.
+  if (c.champion === c.userTeam) {
+    const rivalId = up.pair.a === c.userTeam ? up.pair.b : up.pair.a;
+    recordCupWin({
+      when: Date.now(),
+      teamName: teamById(c.userTeam)?.name ?? cupTeamName(c.userTeam),
+      rivalName: cupTeamName(rivalId),
+      score: [score[0], score[1]],
+      pens: pens ? [pens[0], pens[1]] : null
+    });
+  }
 }
 
 /** Simula los cruces de la ronda que no van a jugar en el tablero. */

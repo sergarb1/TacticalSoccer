@@ -20,6 +20,8 @@ import {
 import { playSound } from '../game/sounds';
 import { startMusic, stopMusic, setMusicVolume } from '../game/music';
 import { saveMatch, clearSavedMatch, loadSavedMatch } from '../game/serialize';
+import { recordMatchResult, recordMvp, outcomeForUser } from '../game/records';
+import { teamById } from '../game/formations';
 import { useSettings } from './useSettings';
 import { nextAiAction, nextAiPenaltyAction, aiControlsTeam } from '../ai/strategy';
 import type { AiDecision } from '../ai/strategy';
@@ -57,7 +59,9 @@ const g = {
   /** Modal animado de acción especial (Tiro Billetes, Vaselina, Hachazo). */
   specialFx: ref<{ kind: SpecialFxKind; icon: string; title: string; sub: string } | null>(null),
   /** Últimas frases del narrador (la [0] es la más reciente). */
-  commentary: ref<Line[]>([])
+  commentary: ref<Line[]>([]),
+  /** Goles y robos por jugador de la partida en curso (para el MVP). */
+  playerBook: {} as Map<number, { goals: number; steals: number }>
 };
 
 let lineId = 0;
@@ -147,6 +151,17 @@ function applyEvents(events: GameEvent[]): void {
     // modal de acción especial: tiros especiales y hachazo
     if (e.type === 'shot' && e.kind !== 'normal') showSpecialFx(e.kind);
     if (e.type === 'steal' && e.hachazo) showSpecialFx('hachazo');
+    // cuaderno del MVP: apunta goles y robos del partido en curso
+    if (e.type === 'shot' && e.outcome === 'goal') {
+      const book = g.playerBook.get(e.shooterId) ?? { goals: 0, steals: 0 };
+      book.goals += 1;
+      g.playerBook.set(e.shooterId, book);
+    }
+    if (e.type === 'steal' && e.success) {
+      const book = g.playerBook.get(e.defenderId) ?? { goals: 0, steals: 0 };
+      book.steals += 1;
+      g.playerBook.set(e.defenderId, book);
+    }
     // drama de la tanda: banner grande por lanzamiento y desenlace
     if (e.type === 'penalty') {
       if (e.outcome === 'pending') {
@@ -204,6 +219,7 @@ export function moveHighlights(): Cell[] {
 export function startMatch(cfg: MatchConfig): void {
   clearSavedMatch();
   g.state.value = createMatch(cfg);
+  g.playerBook = new Map(); // cuaderno del MVP a blanco
   if (settings.music) startMusic(settings.volume);
   g.ui.selectedId = null;
   g.ui.mode = 'idle';
@@ -396,6 +412,22 @@ export function actionShotConfirm(kind: ShotKind = 'normal'): boolean {
   return false;
 }
 
+/** MVP de la partida en curso (o de la última jugada), desde el cuaderno. */
+export function matchMvp(): { name: string; goals: number; steals: number; teamName: string } | null {
+  const s = g.state.value;
+  if (!s || g.playerBook.size === 0) return null;
+  let best: { id: number; goals: number; steals: number } | null = null;
+  for (const [id, b] of g.playerBook) {
+    if (!best || b.goals > best.goals || (b.goals === best.goals && b.steals > best.steals)) best = { id, ...b };
+  }
+  if (!best) return null;
+  const star = s.players.find((p) => p.id === best.id);
+  if (!star || star.role === 'POR') return null; // el portero firma las paradas, no los goles
+  const homeName = teamById(s.config.home.teamId)?.name ?? 'Equipo';
+  const awayName = teamById(s.config.away.teamId)?.name ?? 'Rival';
+  return { name: star.name, goals: best.goals, steals: best.steals, teamName: star.team === 0 ? homeName : awayName };
+}
+
 /** Fin de partido (o entrada en la tanda si la copa lo pide). */
 function checkGameOver(): void {
   const s = g.state.value;
@@ -411,9 +443,38 @@ function checkGameOver(): void {
     return;
   }
   g.ui.gameOver = true;
+  registerMatchRecord(s);
   clearSavedMatch();
   stopMusic();
   void g.state.value; // re-leído por si la copa lo pide después
+}
+
+/**
+ * Palmarés: apunta el resultado contra la máquina y al MVP de la partida
+ * (el espectador aivsai no cuenta para la racha ni los récords).
+ */
+function registerMatchRecord(s: GameState): void {
+  if (s.config.mode !== 'ai') return;
+  recordMatchResult(outcomeForUser(s));
+  const homeName = teamById(s.config.home.teamId)?.name ?? 'Equipo';
+  const awayName = teamById(s.config.away.teamId)?.name ?? 'Rival';
+  const matchLabel = `${homeName} ${s.score[0]}–${s.score[1]} ${awayName}`;
+  let best: { id: number; goals: number; steals: number } | null = null;
+  for (const [id, b] of g.playerBook) {
+    const cand = { id, ...b };
+    if (!best || cand.goals > best.goals || (cand.goals === best.goals && cand.steals > best.steals)) best = cand;
+  }
+  if (!best) return;
+  const star = s.players.find((p) => p.id === best.id);
+  if (!star) return;
+  recordMvp({
+    when: Date.now(),
+    playerName: star.name,
+    goals: best.goals,
+    steals: best.steals,
+    matchLabel,
+    mvpTeam: star.team === 0 ? homeName : awayName
+  });
 }
 
 /** ¿Le toca a la máquina ahora mismo (cualquier modo con IA)? */

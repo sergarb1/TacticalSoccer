@@ -13,6 +13,7 @@ import TurnBanner from './components/TurnBanner.vue';
 import TutorialOverlay from './components/TutorialOverlay.vue';
 import CommentaryBar from './components/CommentaryBar.vue';
 import CupScreen from './components/CupScreen.vue';
+import LeagueScreen from './components/LeagueScreen.vue';
 import SpecialFx from './components/SpecialFx.vue';
 import {
   game, startMatch, tryResume, selectPlayer, boardCellClick, boardTokenClick,
@@ -25,11 +26,12 @@ import type { PenaltyUi } from './components/ActionPanel.vue';
 import { stopMusic } from './game/music';
 import { useSettings } from './composables/useSettings';
 import { useCup, recordUserResult } from './composables/useCup';
+import { useLeague, recordLeagueResult } from './composables/useLeague';
 import { passOptionsFor } from './game/passing';
 import { getPlayer } from './game/rules';
 import type { MatchConfig, TeamId } from './game/types';
 
-const screen = ref<'menu' | 'setup' | 'game' | 'cup'>('menu');
+const screen = ref<'menu' | 'setup' | 'game' | 'cup' | 'league'>('menu');
 const paused = ref(false);
 const settings = useSettings();
 const setupTutorial = ref(false);
@@ -37,7 +39,19 @@ const setupTutorial = ref(false);
 const state = computed(() => game.state.value);
 const ui = game.ui;
 const cupCtl = useCup();
+const leagueCtl = useLeague();
 const boardHighlights = computed(() => moveHighlights());
+
+/* ------- meteoros cosméticos: el clima lo decide la semilla ------- */
+const weatherClass = computed(() => {
+  const s = state.value;
+  if (!s) return '';
+  const w = s.config.seed % 4;
+  if (w === 1) return 'weather-night';
+  if (w === 2) return 'weather-sunset';
+  if (w === 3) return 'weather-rain';
+  return ''; // soleado de la buena
+});
 
 /* ------- drama de la tanda: banner propio ------- */
 const penaltyBanner = computed(() => game.penaltyBanner.value);
@@ -133,6 +147,28 @@ function onResume(): void {
     setupTutorial.value = false;
   }
 }
+
+/* ---------------- Liga Gañán ---------------- */
+
+function onLeaguePlay(cfg: MatchConfig): void {
+  startMatch(cfg);
+  screen.value = 'game';
+}
+
+/** Al terminar el partido de liga: registra y ya simula el resto de la jornada. */
+watch(
+  () => ui.gameOver,
+  (over) => {
+    const s = state.value;
+    if (!over || !s || !s.config.league || screen.value !== 'game') return;
+    recordLeagueResult([s.score[0], s.score[1]]);
+    ui.gameOver = false;
+    ui.selectedId = null;
+    setMode('idle');
+    stopMusic();
+    screen.value = 'league';
+  }
+);
 
 /* ---------------- Copa Capello ---------------- */
 
@@ -288,13 +324,16 @@ function endTutorial(): void {
       @tutorial="goSetup(true)"
       @resume="onResume"
       @cup="screen = 'cup'"
+      @league="screen = 'league'"
     />
 
     <MatchSetup v-else-if="screen === 'setup'" @start="onStart" @back="screen = 'menu'" />
 
     <CupScreen v-else-if="screen === 'cup'" @play="onCupPlay" @back="screen = 'menu'" />
 
-    <div v-else-if="state" class="game-screen">
+    <LeagueScreen v-else-if="screen === 'league'" @play="onLeaguePlay" @back="screen = 'menu'" />
+
+    <div v-else-if="state" class="game-screen" :class="weatherClass">
       <CommentaryBar :state="state" />
       <Scoreboard :state="state" @pause="paused = true" />
 
@@ -424,6 +463,40 @@ function endTutorial(): void {
   padding: calc(4.3rem + env(safe-area-inset-top)) 0.8rem 1rem;
   display: grid;
   gap: 0.55rem;
+  position: relative;
+}
+
+/* ------- meteoros cosméticos (el clima lo pinta la semilla) ------- */
+.game-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+}
+.game-screen.weather-night::before {
+  background: linear-gradient(180deg, rgba(6, 10, 30, 0.42), rgba(10, 8, 40, 0.55));
+  opacity: 1;
+}
+.game-screen.weather-sunset::before {
+  background: linear-gradient(180deg, rgba(255, 140, 60, 0.22), rgba(120, 40, 90, 0.28));
+  opacity: 1;
+}
+.game-screen.weather-rain::before {
+  background:
+    repeating-linear-gradient(75deg, rgba(170, 200, 255, 0.13) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, rgba(30, 50, 80, 0.3), rgba(20, 35, 60, 0.4));
+  opacity: 1;
+  animation: rain-drift 0.7s linear infinite;
+}
+.game-screen > :not(.banner-layer) { position: relative; z-index: 1; }
+@keyframes rain-drift {
+  from { background-position: 0 0; }
+  to { background-position: -22px 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-screen.weather-rain::before { animation: none; }
 }
 .scoreboard { }
 .game-layout {

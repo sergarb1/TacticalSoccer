@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { FORMATIONS, TEAMS, teamById, buildRoster, formationById } from '../game/formations';
+import { parseSeedCode } from '../game/seedcode';
 import type { MatchConfig } from '../game/types';
 
 const emit = defineEmits<{
@@ -15,6 +16,8 @@ const homeFormation = ref('1-2-1');
 const awayFormation = ref('2-1-1');
 const mode = ref<'hotseat' | 'ai' | 'aivsai'>('ai');
 const aiLevel = ref<'easy' | 'normal' | 'hard'>(savedAiLevel.value);
+/** Código de reto pegado por el jugador (vacío = semilla al azar). */
+const secretCode = ref('');
 
 const home = computed(() => teamById(homeId.value));
 const away = computed(() => teamById(awayId.value));
@@ -46,13 +49,15 @@ function start(): void {
     awayId.value = other.id;
     awayFormation.value = FORMATIONS[0].id;
   }
+  // Código de reto: si lo pegan, el partido se parece está pintado.
+  const challengeSeed = secretCode.value ? parseSeedCode(secretCode.value) : null;
   const cfg: MatchConfig = {
     home: { teamId: homeId.value, formation: homeFormation.value },
     away: { teamId: awayId.value, formation: awayFormation.value },
     mode: mode.value,
     aiTeam: mode.value === 'hotseat' ? null : (mode.value === 'ai' ? 1 : 0),
     aiLevel: aiLevel.value,
-    seed: Math.floor(Math.random() * 4294967295)
+    seed: challengeSeed ?? Math.floor(Math.random() * 4294967295)
   };
   emit('start', cfg);
 }
@@ -100,6 +105,11 @@ const statLabels = [
           <label><input v-model="aiLevel" type="radio" value="hard" /> Difícil</label>
         </div>
         <p class="desc">{{ homeFormationName }} · {{ awayFormationName }}</p>
+        <label class="secret-row">
+          <span>Código de reto 🔒</span>
+          <input v-model="secretCode" class="secret-input" placeholder="ej. ABC12D0" maxlength="10" autocomplete="off" />
+        </label>
+        <p class="desc">Si pegas un código, la suerte de la semilla queda pintada: reta a alguien a la misma partida.</p>
         <button v-if="mode === 'hotseat'" class="ghost small">Cada jugador maneja un equipo por turnos.</button>
       </section>
 
@@ -153,6 +163,13 @@ select { width: 100%; }
 label { font-size: 0.85rem; display: flex; gap: 0.4rem; align-items: center; }
 .ai-levels { border-left: 2px solid var(--panel-border); padding-left: 0.7rem; display: grid; gap: 0.3rem; }
 .small { font-size: 0.75rem; }
+.secret-row { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: var(--text-dim); }
+.secret-input {
+  background: rgba(255,255,255,0.06); border: 1px dashed var(--panel-border);
+  border-radius: 8px; color: var(--text); padding: 0.35rem 0.6rem; letter-spacing: 0.14em;
+  text-transform: uppercase; font-size: 0.85rem;
+}
+.secret-input::placeholder { text-transform: none; letter-spacing: 0.05em; }
 .actions { display: flex; justify-content: center; gap: 1rem; margin-top: 1.4rem; }
 .big { font-size: 1.05rem; padding: 0.7rem 2.2rem; }
 @media (max-width: 980px) { .columns { grid-template-columns: 1fr; } }

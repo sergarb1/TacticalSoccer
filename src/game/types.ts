@@ -79,6 +79,8 @@ export interface MatchConfig {
   seed: number;
   /** El empate se desempata con la tanda 1v1 jugada en el tablero (Copa Capello). */
   cup?: boolean;
+  /** Partido oficial de la Liga Gañán (los empates cuentan y no hay tanda). */
+  league?: boolean;
 }
 
 export type Phase = 'playing' | 'fulltime' | 'penalti';

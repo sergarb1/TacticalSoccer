@@ -163,5 +163,7 @@ export const PROB = {
 export const STORAGE_KEYS = {
   settings: 'tactical-soccer.settings.v1',
   match: 'tactical-soccer.match.v2',
-  cup: 'tactical-soccer.cup.v1'
+  cup: 'tactical-soccer.cup.v1',
+  league: 'tactical-soccer.league.v1',
+  records: 'tactical-soccer.records.v1'
 } as const;

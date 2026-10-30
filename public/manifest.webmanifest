@@ -1,0 +1,20 @@
+{
+  "name": "Tactical Soccer · Gañan Edition",
+  "short_name": "Tactical Soccer",
+  "description": "Fútbol táctico por turnos 5v5 en el navegador. Gratis, sin cuentas y sin conexión.",
+  "lang": "es-ES",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1a12",
+  "theme_color": "#0b1a12",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

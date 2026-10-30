@@ -8,6 +8,7 @@ const emit = defineEmits<{
   (e: 'tutorial'): void;
   (e: 'resume'): void;
   (e: 'cup'): void;
+  (e: 'league'): void;
 }>();
 
 const hasSave = hasSavedMatch();
@@ -28,6 +29,7 @@ void settings;
       <button class="gold big" @click="emit('vs-ai')">🎮 Contra la máquina</button>
       <button class="primary big" @click="emit('hotseat')">👥 Dos jugadores</button>
       <button class="cup big" @click="emit('cup')">🏆 Copa Capello</button>
+      <button class="cup big" @click="emit('league')">🏅 Liga Gañán</button>
       <button class="big" @click="emit('tutorial')">🎓 Tutorial</button>
       <button v-if="hasSave" class="big resume" @click="emit('resume')">▶ Continuar partida</button>
       <p class="foot">Gratuito, sin cuentas y sin conexión. Código MIT.</p>

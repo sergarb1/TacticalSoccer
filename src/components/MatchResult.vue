@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { GameState } from '../game/types';
+import { seedCode } from '../game/seedcode';
+import { matchMvp } from '../composables/useGame';
 
 const props = defineProps<{ state: GameState }>();
 const emit = defineEmits<{ (e: 'again'): void; (e: 'menu'): void }>();
@@ -65,6 +67,44 @@ function possession(team: 0 | 1): number {
   if (total === 0) return 50;
   return Math.round(((team === 0 ? a : b) / total) * 100);
 }
+
+/* ------- MVP, código del reto y compartir ------- */
+const mvp = computed(() => matchMvp());
+const code = computed(() => seedCode(props.state.rng));
+const copied = ref(false);
+let copyTimer: number | null = null;
+
+function flashCopied(): void {
+  copied.value = true;
+  if (copyTimer !== null) window.clearTimeout(copyTimer);
+  copyTimer = window.setTimeout(() => (copied.value = false), 2200);
+}
+
+async function copyCode(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(code.value);
+    flashCopied();
+  } catch { /* portapapeles bloqueado: no revienta la pantalla */ }
+}
+
+/** Texto compartible del resultado (tabloncito para mandar por ahí). */
+const shareText = computed(() => {
+  const s = props.state;
+  const pen = draw.value ? ` (pen. ${pens.value![0]}–${pens.value![1]})` : '';
+  const mvpLine = mvp.value ? `\n⭐ MVP: ${mvp.value.name} · ${mvp.value.goals} ⚽ / ${mvp.value.steals} 🧤 (${mvp.value.teamName})` : '';
+  return `⚽ TACTICAL SOCCER · GAÑÁN EDITION\n${winner.value}${pen}\nMarcador final: ${s.score[0]}–${s.score[1]}${mvpLine}\n🎲 Código del reto: ${code.value}`;
+});
+
+async function shareResult(): Promise<void> {
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'Tactical Soccer · Gañan Edition', text: shareText.value });
+    } else {
+      await navigator.clipboard.writeText(shareText.value);
+      flashCopied();
+    }
+  } catch { /* el usuario canceló: sin drama */ }
+}
 </script>
 
 <template>
@@ -85,9 +125,16 @@ function possession(team: 0 | 1): number {
         </tbody>
       </table>
 
+      <p v-if="mvp" class="mvp-line">⭐ MVP: <b>{{ mvp.name }}</b> · {{ mvp.goals }} ⚽ / {{ mvp.steals }} 🧤 ({{ mvp.teamName }})</p>
+
+      <button class="code-row ghost" :title="'Copiar código del reto: ' + code" @click="copyCode">
+        🎲 Código del reto: <b>{{ code }}</b><span v-if="copied" class="copied"> ¡copiado!</span>
+      </button>
+
       <div class="actions">
-        <button class="gold" @click="emit('again')">Jugar otra vez</button>
-        <button class="ghost" @click="emit('menu')">Menú principal</button>
+        <button class="gold share" @click="shareResult">📤 Compartir resultado</button>
+        <button class="primary" @click="emit('again')">Jugar otra vez</button>
+        <button class="ghost" @click="emit('menu')">Menú</button>
       </div>
     </div>
   </div>
@@ -110,5 +157,13 @@ function possession(team: 0 | 1): number {
 .th-home { color: var(--home); }
 .th-away { color: var(--away); }
 .stats-table td:first-child { text-align: left; color: var(--text-dim); }
-.actions { display: flex; gap: 0.8rem; justify-content: center; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.8rem; justify-content: center; }
+.mvp-line { margin: 0 0 0.5rem; color: var(--text-dim); font-size: 0.85rem; }
+.code-row {
+  margin: 0 auto 0.8rem; font-size: 0.8rem; cursor: pointer;
+  border: 1px dashed var(--panel-border); border-radius: 8px; padding: 0.3rem 0.7rem;
+}
+.code-row b { color: var(--gold); letter-spacing: 0.12em; }
+.copied { color: #79d98a; }
+.share { font-size: 0.9rem; }
 </style>

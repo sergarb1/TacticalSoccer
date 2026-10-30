@@ -160,6 +160,14 @@ export function commentaryForEvent(s: GameState, e: GameEvent): string | null {
             d + ' lee la jugada y se planta: muralla de una finca, ché.'
           ]);
     }
+    case 'harden': {
+      const t = sideOf(e.team);
+      return pick([
+                `¡${t} endurecen la defensa! ¡El graderío alza el pulgar, pero el rival cruje los dientes!`,
+        '¡Muro de betón atrás! El rival va a tener que mirárselo dos veces.',
+        `Defensa garrida de ${t}: ni el despistado pasaría por ahí hoy.`
+      ]);
+    }
     case 'pickup': {
       const p = nameOf(s, e.playerId);
       return pick([p + ' doma el balón suelto.', '¡Cae sobre la pelota ' + p + ' y la endereza!']);
@@ -193,6 +201,25 @@ export function ambientLine(s: GameState): string {
   if (s.phase === 'fulltime') return `El marcador final: ${score}.`;
   const carrier: Player | undefined = s.ball.carrier === null ? undefined : s.players.find((p) => p.id === s.ball.carrier);
   const cutting = s.players.find((p) => p.stance === 'cut');
+  // quejas del público cuando el marcador aprieta (o no corre nadie)
+  const ahead = s.score[0] - s.score[1];
+  if (Math.abs(ahead) >= 2 && Math.random() < 0.4) {
+    return ahead > 0
+      ? pick([
+          `Y los rojos a pasear el partido: ${score} va de calle… el graderío aguantará lo que aguantar pueda.`,
+          `Resultadillo ${score} para los rojos: esto pide pitada del personal si lo sueltan más.`
+        ])
+      : pick([
+          `Los azules dominan y remachan (${score}): público impaciente, y poco dispuesto a tragárselo.`,
+          `Muy cuesta arriba, ${score} desfavorable: en la grada ya se discute el once del año que viene.`
+        ]);
+  }
+  if (min >= 75 && Math.random() < 0.3) {
+    return pick([
+      '¡Que corran los años! Falta poco: el graderío cuenta segundos con los dedos.',
+      `Minuto ${min}: final apretado… hay más nervios en la grada que en el campo.`
+    ]);
+  }
   if (cutting && Math.random() < 0.35) {
     return pick([
       `Ojo a ${cutting.name}: se ha plantado al corte y el rival no la pasa por ahí…`,
