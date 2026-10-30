@@ -32,7 +32,7 @@ export function validateMatch(data: unknown): GameState | null {
     }
     if (s.ball.carrier !== null && !s.players.some((p) => p.id === s.ball.carrier)) return null;
     if (!inField(s.ball.pos)) return null;
-    if (s.phase !== 'playing' && s.phase !== 'fulltime') return null;
+    if (s.phase !== 'playing' && s.phase !== 'fulltime' && s.phase !== 'penalti') return null;
     if (s.currentTeam !== 0 && s.currentTeam !== 1) return null;
     if (typeof s.ap !== 'number' || s.ap < 0 || s.ap > 9) return null;
     // Barras y especiales: partidas anteriores al sistema se les asigna el
@@ -41,6 +41,16 @@ export function validateMatch(data: unknown): GameState | null {
     if (!Array.isArray(s.specials) || s.specials.length !== 2) s.specials = [2, 2];
     s.meter = s.meter.map((m) => Math.max(0, Math.min(3, Math.round(Number(m) || 0)))) as [number, number];
     s.specials = s.specials.map((n) => Math.max(0, Math.min(9, Math.round(Number(n) || 0)))) as [number, number];
+    // Endurecer y tanda de penaltis: partidas anteriores a estas mecánicas
+    // se les asigna el estado inicial con gracia.
+    if (!Array.isArray(s.harden) || s.harden.length !== 2) s.harden = [false, false];
+    s.harden = [!!s.harden[0], !!s.harden[1]];
+    if (s.penaltyShots === undefined || !Array.isArray(s.penaltyShots) || s.penaltyShots.length !== 2) s.penaltyShots = [0, 0];
+    if (s.penaltyKicks === undefined || !Array.isArray(s.penaltyKicks) || s.penaltyKicks.length !== 2) s.penaltyKicks = [0, 0];
+    if (s.penaltyStep !== 'keeper' && s.penaltyStep !== 'shooter') s.penaltyStep = 'keeper';
+    if (s.penaltyShooterId === undefined) s.penaltyShooterId = null;
+    if (s.penaltyKeeperId === undefined) s.penaltyKeeperId = null;
+    if (s.penaltyWinner === undefined) s.penaltyWinner = null;
     if (!Array.isArray(s.log)) return null;
     if (typeof s.rng !== 'number') return null;
     return s;

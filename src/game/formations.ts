@@ -129,6 +129,38 @@ export const TEAMS: TeamDef[] = [
     style: 'táctico',
     desc: 'Toque elegante y muchísimo fútbol entre líneas.',
     roster: ['Mendieta', 'Aimed', 'Farinós', 'Zahovic', 'Carboni']
+  },
+  {
+    id: 'senyera',
+    name: 'Senyera CF',
+    short: 'SNR',
+    style: 'ofensivo',
+    desc: 'Sale a morder cada balón; dicen que vestida de albaricoque.',
+    roster: ['Tolo', 'Chimo', 'Pere', 'Ximo', 'Antolí']
+  },
+  {
+    id: 'horta',
+    name: 'Horta Che',
+    short: 'HRC',
+    style: 'táctico',
+    desc: 'Toques cortos por la huerta y apertura a banda con la zancada base.',
+    roster: ['Rigo', 'Segrelles', 'Mari', 'Colom', 'Banyuls']
+  },
+  {
+    id: 'ribera',
+    name: 'Ribera del Júcar',
+    short: 'RBJ',
+    style: 'equilibrado',
+    desc: 'Ni un paso atrás ni tres por delante: equilibrio de vega.',
+    roster: ['Jover', 'Trenca', 'Almela', 'Boticario', 'Sentis']
+  },
+  {
+    id: 'marjal',
+    name: 'Marjal FC',
+    short: 'MRJ',
+    style: 'defensivo',
+    desc: 'Riachuelo dee agua parada: todo lo que entra, se queda embarrado.',
+    roster: ['Visca', 'Baldó', 'Renar', 'Sans', 'Rabiella']
   }
 ];
 

@@ -33,7 +33,9 @@ export const COST = {
   steal: 1,
   cut: 1,
   /** Hachazo robador: robo premium que gasta una acción especial. */
-  hack: 1
+  hack: 1,
+  /** Endurecer defensa: 1 AP de todo el equipo durante el turno rival. */
+  harden: 1
 } as const;
 
 /** Coste en AP de cada tipo de disparo. */
@@ -88,6 +90,40 @@ export const HACK_RANGE = 2;
 /** Aumento de probabilidad del Hachazo sobre el robo normal (puntos %). */
 export const HACK_BONUS = 25;
 
+/* ------------------------------------------------------------------ */
+/* Endurecer defensa                                                    */
+/* ------------------------------------------------------------------ */
+
+/** El equipo que endurece roba mejor durante el turno rival (+%). */
+export const HARDEN_STEAL_BONUS = 12;
+/** Peso extra de tapones de tiro de un equipo endurecido. */
+export const HARDEN_BLOCK_WEIGHT = 0.8;
+/** Bonus a interceptar pases de un equipo endurecido (plantado a cortar). */
+export const HARDEN_INTERCEPT_CUT = 8;
+/** Bonus a interceptar pases de un equipo endurecido (sin postura). */
+export const HARDEN_INTERCEPT = 5;
+
+/* ------------------------------------------------------------------ */
+/* Desempate 1v1: tanda de penaltis jugada en el tablero                */
+/* ------------------------------------------------------------------ */
+
+/** PA que tiene el portero para adelantarse antes de cada lanzamiento. */
+export const PENALTY_KEEPER_AP = 1;
+/** PA del lanzador: moverse por el área y chutar. */
+export const PENALTY_SHOOTER_AP = 3;
+/** Probabilidad base de marcar el penalti (sin lecturas). */
+export const PENALTY_BASE_CHANCE = 58;
+/** Penalización si el portero está en la fila cruzada por el lanzamiento. */
+export const PENALTY_KEEP_GUESS_PENALTY = 26;
+/** Por punto de tiro del lanzador (+). */
+export const PENALTY_STATS_SHOOT = 4;
+/** Por punto de reflejos del portero (−). */
+export const PENALTY_STATS_KEEP = 3;
+/** Al acercarse a la boca del arco (+ por casilla ganada). */
+export const PENALTY_APPROACH_BONUS = 6;
+/** Tanda reglamentaria: tras este número de lanzamientos, mata-mata. */
+export const PENALTY_ROUNDS = 5;
+
 /**
  * Barras de acciones especiales: cada barra de METER_MAX segmentos llena
  * concede una acción especial extra (Billetes, Vaselina o Hachazo).
@@ -116,5 +152,6 @@ export const PROB = {
  * guardadas con rejilla 9x5 se descartan con gracia). */
 export const STORAGE_KEYS = {
   settings: 'tactical-soccer.settings.v1',
-  match: 'tactical-soccer.match.v2'
+  match: 'tactical-soccer.match.v2',
+  cup: 'tactical-soccer.cup.v1'
 } as const;

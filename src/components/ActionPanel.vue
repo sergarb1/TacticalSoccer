@@ -15,7 +15,20 @@ const props = defineProps<{
   cutOptions?: Array<{ carrierId: number; name: string; dist: number }>;
   /** Previsualización por tipo de disparo. */
   shotReads?: { normal: ShotReadUi | null; billetes: ShotReadUi | null; vaselina: ShotReadUi | null };
+  /** Datos de la tanda de penaltis (si estamos en ella). */
+  penalty?: PenaltyUi;
 }>();
+
+interface ShotReadUi { goal: number; description: string }
+
+export interface PenaltyUi {
+  active: boolean;
+  step: 'keeper' | 'shooter' | 'none';
+  kicks: [number, number];
+  shooterName: string;
+  keeperName: string;
+  chance: number | null;
+}
 
 interface ShotReadUi { goal: number; description: string }
 
@@ -34,6 +47,9 @@ const emit = defineEmits<{
   (e: 'end-turn'): void;
   (e: 'steal-mode'): void;
   (e: 'cancel'): void;
+  (e: 'harden'): void;
+  (e: 'penalty-ready'): void;
+  (e: 'penalty-shoot'): void;
 }>();
 
 /* Reactivos: si se leen una sola vez, la selección del campo no
@@ -79,10 +95,41 @@ const shotLabel = (k: ShotKind): string => SHOT_LABEL[k];
 const shotDesc = (k: ShotKind): string | null => props.shotReads?.[k]?.description ?? null;
 /** Iconos de tiro y acciones para leer el panel de un vistazo. */
 const SHOT_ICONS: Record<ShotKind, string> = { normal: '⚽', billetes: '💸', vaselina: '🕊️' };
-</script>
+
+/** ¿Puede el equipo activo endurecer la defensa de una vez? */
+const canHarden = computed(() =>
+  props.state.phase === 'playing' && props.state.ap > 0 && !props.state.harden[props.state.currentTeam]
+);
+/** Vista de la tanda activa. */
+const pen = computed(() => props.penalty ?? null);</script>
 
 <template>
   <section class="panel action-panel">
+    <!-- tanda de penaltis: control del 1v1 -->
+    <template v-if="pen?.active">
+      <div class="row top">
+        <strong>Penaltis {{ pen.kicks[0] }}–{{ pen.kicks[1] }}</strong>
+        <span class="ap-badge">PA {{ state.ap }}</span>
+      </div>
+      <div class="hint">{{ state.message }}</div>
+      <div v-if="pen.step === 'keeper'" class="pen-step">
+        <p class="hint">Paso del guardameta: pulsa una casilla resaltada para adelantarse (adivina la esquina) o dadle por terminado.</p>
+        <div class="buttons">
+          <button :disabled="state.ap < 1" @click="emit('move')">🧤 Adelantar (1)</button>
+          <button class="primary" @click="emit('penalty-ready')">✅ Listo</button>
+        </div>
+      </div>
+      <div v-else class="pen-step">
+        <p class="hint">Lanzador {{ pen.shooterName }}: muevete por el área o dispara ({{ pen.chance ?? '—' }}% de gol).</p>
+        <div class="buttons">
+          <button :disabled="state.ap < 1" @click="emit('move')">👟 Paso (1)</button>
+          <button :disabled="state.ap < 1" class="gold" @click="emit('penalty-shoot')">🥅 Fusilar</button>
+          <button class="ghost" @click="emit('penalty-ready')">Sin lanzar</button>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
     <div class="row top">
       <strong>{{ selected ? selected.name : 'Acciones' }}</strong>
       <span class="meter-box">
@@ -173,8 +220,11 @@ const SHOT_ICONS: Record<ShotKind, string> = { normal: '⚽', billetes: '💸', 
         <button :disabled="!canAct || hasBall || !isOwn || !selected || selected.hasActed" @click="emit('steal-mode')">🧤 Robar (1)</button>
         <button :disabled="!canHack" @click="emit('hack-mode')">⚡ Hachazo</button>
         <button :disabled="!canAct || hasBall || !isOwn || !selected || selected.hasActed" @click="emit('cut-mode')">🛡️ Cortar (1)</button>
+        <button :disabled="!canHarden" title="1 AP: roba y corta mejor durante el turno rival" @click="emit('harden')">🧱 Endurecer (1)</button>
         <button class="primary end-turn" :disabled="state.phase !== 'playing'" @click="emit('end-turn')">⏭ Terminar turno</button>
       </div>
+      <p v-if="state.harden[state.currentTeam]" class="hint">🧱 Defensa endurecida: robo, corte y tapón reforzados mientras dure el turno rival.</p>
+    </template>
     </template>
   </section>
 </template>
@@ -209,4 +259,6 @@ const SHOT_ICONS: Record<ShotKind, string> = { normal: '⚽', billetes: '💸', 
 .end-turn { grid-column: 1 / -1; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .shot-box { display: grid; gap: 0.5rem; font-weight: 700; }
+.pen-step { display: grid; gap: 0.4rem; }
+.pen-step .buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 </style>

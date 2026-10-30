@@ -12,32 +12,47 @@ import PauseMenu from './components/PauseMenu.vue';
 import TurnBanner from './components/TurnBanner.vue';
 import TutorialOverlay from './components/TutorialOverlay.vue';
 import CommentaryBar from './components/CommentaryBar.vue';
+import CupScreen from './components/CupScreen.vue';
 import {
   game, startMatch, tryResume, selectPlayer, boardCellClick, boardTokenClick,
   actionMove, actionPass, actionShotArm, actionShotConfirm, actionSteal, actionCut,
   finishTurn, stealOpportunities, cutOpportunities, hackOpportunities, actionHack, currentPassOptions, shotPreviews, setMode, cancelMode,
-  moveHighlights
+  moveHighlights, actionHarden, actionPenaltyReady, actionPenaltyShoot, penaltyPanelInfo, penaltyChancePreview
 } from './composables/useGame';
 import type { ShotKind } from './game/types';
+import type { PenaltyUi } from './components/ActionPanel.vue';
 import { stopMusic } from './game/music';
 import { useSettings } from './composables/useSettings';
+import { useCup, recordUserResult } from './composables/useCup';
 import { passOptionsFor } from './game/passing';
 import { getPlayer } from './game/rules';
 import type { MatchConfig, TeamId } from './game/types';
 
-const screen = ref<'menu' | 'setup' | 'game'>('menu');
+const screen = ref<'menu' | 'setup' | 'game' | 'cup'>('menu');
 const paused = ref(false);
 const settings = useSettings();
 const setupTutorial = ref(false);
 
 const state = computed(() => game.state.value);
 const ui = game.ui;
+const cupCtl = useCup();
 const boardHighlights = computed(() => moveHighlights());
+
+/* ------- datos de la tanda para el panel ------- */
+const penaltyUi = computed<PenaltyUi>(() => ({
+  ...penaltyPanelInfo(),
+  chance: penaltyChancePreview()
+}));
 
 /* ------- barra de consejos contextuales ------- */
 const contextualTip = computed(() => {
   const s = state.value;
   if (!s) return '';
+  if (s.phase === 'penalti') {
+    return s.penaltyStep === 'keeper'
+      ? 'Tanda: el portero se adelanta primero (1 PA) o se queda quieto; adivina la esquina para pararla.'
+      : 'Tanda: muévete (1 PA) y dispara; si el portero adivina tu esquina, la para.';
+  }
   switch (ui.mode) {
     case 'moving': return 'Elige una casilla blanca para moverte (gasta 1 PA).';
     case 'passing': return 'Pulsa «Pasar a…» en la lista: el % es la probabilidad de acierto.';
@@ -112,6 +127,31 @@ function onResume(): void {
     setupTutorial.value = false;
   }
 }
+
+/* ---------------- Copa Capello ---------------- */
+
+function onCupPlay(cfg: MatchConfig): void {
+  startMatch(cfg);
+  screen.value = 'game';
+}
+
+/** Al terminar el partido de Copa: registra, simula el resto y vuelve al cuadro. */
+watch(
+  () => ui.gameOver,
+  (over) => {
+    const s = state.value;
+    if (!over || !s || !s.config.cup || screen.value !== 'game') return;
+    const pens = s.penaltyWinner !== null ? ([s.penaltyKicks[0], s.penaltyKicks[1]] as [number, number]) : null;
+    const winner: TeamId = pens !== null ? (s.penaltyWinner as TeamId) : s.score[0] > s.score[1] ? 0 : 1;
+    recordUserResult([...s.score] as [number, number], winner, pens);
+    cupCtl.simRound();
+    ui.gameOver = false;
+    ui.selectedId = null;
+    setMode('idle');
+    stopMusic();
+    screen.value = 'cup';
+  }
+);
 
 function quitToMenu(): void {
   stopMusic(); // la cobertura de fondo se apaga al volver al menú
@@ -241,9 +281,12 @@ function endTutorial(): void {
       @vs-ai="goSetup(false)"
       @tutorial="goSetup(true)"
       @resume="onResume"
+      @cup="screen = 'cup'"
     />
 
     <MatchSetup v-else-if="screen === 'setup'" @start="onStart" @back="screen = 'menu'" />
+
+    <CupScreen v-else-if="screen === 'cup'" @play="onCupPlay" @back="screen = 'menu'" />
 
     <div v-else-if="state" class="game-screen">
       <CommentaryBar :state="state" />
@@ -303,6 +346,10 @@ function endTutorial(): void {
             @shoot-cancel="cancelMode()"
             @cancel="cancelMode()"
             @end-turn="finishTurn()"
+            :penalty="penaltyUi"
+            @harden="actionHarden()"
+            @penalty-ready="actionPenaltyReady()"
+            @penalty-shoot="actionPenaltyShoot()"
           />
           <MiniMap :state="state" @token-click="boardTokenClick" />
           <section class="panel mini-stats">

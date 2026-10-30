@@ -2,15 +2,16 @@
  * Defensa: robos de balón a corta distancia, plantarse a cortar
  * (postura 'cut') y utilidades de presión.
  */
-import { PROB, STEAL_RANGE, CUT_RANGE, HACK_RANGE } from './config';
+import { PROB, STEAL_RANGE, CUT_RANGE, HACK_RANGE, HARDEN_STEAL_BONUS } from './config';
 import { cheby } from './field';
 import { carrier } from './rules';
 import type { Cell, GameState, Player, SoundName } from './types';
 
 /** Probabilidad (0..100) de robar el balón al portador. */
 export function stealChance(state: GameState, defender: Player, victim: Player): number {
-  void state;
-  const raw = 32 + (defender.stats.defense - 5) * 4 - (victim.stats.control - 5) * 4;
+  // Defensa endurecida del equipo: robos con bonus mientras dure el turno rival.
+  const hardened = state.harden?.[defender.team] ? HARDEN_STEAL_BONUS : 0;
+  const raw = 32 + (defender.stats.defense - 5) * 4 - (victim.stats.control - 5) * 4 + hardened;
   return Math.round(Math.max(PROB.stealMin, Math.min(PROB.stealMax, raw)));
 }
 

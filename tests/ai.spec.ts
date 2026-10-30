@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, doMove, doPass, doShoot, doSteal, doHack, endTurn } from '../src/game/match';
+import { createMatch, doMove, doPass, doShoot, doSteal, doHack, doHarden, endTurn } from '../src/game/match';
 import { nextAiAction } from '../src/ai/strategy';
 import { DIFFICULTY } from '../src/ai/difficulty';
 import type { GameState, MatchConfig } from '../src/game/types';
@@ -45,6 +45,7 @@ function playMatch(seed: number, level: 'easy' | 'normal' | 'hard'): GameState {
         case 'shoot': r = doShoot(s, action.playerId, action.shotKind ?? 'normal'); break;
         case 'steal': r = doSteal(s, action.playerId, action.victimId); break;
         case 'hack': r = doHack(s, action.playerId, action.victimId); break;
+        case 'harden': r = doHarden(s); break;
       }
       if (r && !r.ok) {
         // La estrategia nunca debe proponer acciones ilegales:

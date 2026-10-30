@@ -5,7 +5,7 @@
  */
 import { computed, reactive, ref, watch } from 'vue';
 import {
-  createMatch, doMove, doPass, doShoot, doSteal, doCut, doHack, endTurn, teamLabel
+  createMatch, doMove, doPass, doShoot, doSteal, doCut, doHack, doHarden, endTurn, teamLabel
 } from '../game/match';
 import { reachable } from '../game/movement';
 import { passOptionsFor } from '../game/passing';
@@ -13,14 +13,18 @@ import { readShot } from '../game/shooting';
 import { stealChance, stealTargets, cutTargets, hackTargets } from '../game/defense';
 import { CUT_RANGE, HACK_RANGE, HACK_BONUS } from '../game/config';
 import { getPlayer } from '../game/rules';
+import {
+  enterPenalties, doPenaltyKeeperMove, doPenaltyShooterMove, doPenaltyShot, advancePenalty,
+  penaltyChance, penaltyMoveTargets, penaltyGuard
+} from '../game/penalties';
 import { playSound } from '../game/sounds';
 import { startMusic, stopMusic, setMusicVolume } from '../game/music';
 import { saveMatch, clearSavedMatch, loadSavedMatch } from '../game/serialize';
 import { useSettings } from './useSettings';
-import { nextAiAction } from '../ai/strategy';
+import { nextAiAction, nextAiPenaltyAction, aiControlsTeam } from '../ai/strategy';
 import type { AiDecision } from '../ai/strategy';
 import { commentaryForEvent, ambientLine, type Line } from '../game/commentary';
-import type { Cell, GameEvent, GameState, MatchConfig, ShotKind } from '../game/types';
+import type { Cell, GameEvent, GameState, MatchConfig, Phase, ShotKind } from '../game/types';
 
 export type InteractionMode = 'idle' | 'moving' | 'passing' | 'stealing' | 'shooting' | 'cutting' | 'hacking';
 
@@ -122,7 +126,10 @@ function applyEvents(events: GameEvent[]): void {
 /** Casillas alcanzables por el jugador seleccionado (para resaltar). */
 export function moveHighlights(): Cell[] {
   const state = g.state.value;
-  if (!state || state.phase !== 'playing' || g.ui.mode !== 'moving') return [];
+  if (!state || g.ui.mode !== 'moving') return [];
+  // En la tanda de penaltis: los destinos legales del activo actual.
+  if (state.phase === 'penalti') return penaltyMoveTargets(state);
+  if (state.phase !== 'playing') return [];
   if (g.ui.selectedId === null || state.ap <= 0) return [];
   const p = getPlayer(state, g.ui.selectedId);
   if (!p || p.team !== state.currentTeam || p.hasMoved) return [];
@@ -141,6 +148,8 @@ export function startMatch(cfg: MatchConfig): void {
   g.ui.turnBanner = null;
   g.highlightCells.value = [];
   saveMatch(g.state.value);
+  // Modo espectáculo: la máquina saca y dirige ambos equipos.
+  if (cfg.mode === 'aivsai') maybeDriveAi();
 }
 
 export function tryResume(): GameState | null {
@@ -152,6 +161,7 @@ export function tryResume(): GameState | null {
     g.ui.gameOver = saved.phase === 'fulltime';
     g.ui.turnBanner = null;
     g.highlightCells.value = [];
+    if (!g.ui.gameOver) maybeDriveAi();
   }
   return saved;
 }
@@ -189,7 +199,27 @@ export function cancelMode(): void {
 
 export function boardCellClick(cell: Cell): void {
   const s = g.state.value;
-  if (!s || s.phase !== 'playing' || g.ui.busyAi) return;
+  if (!s || g.ui.busyAi) return;
+  // Tanda de penaltis: el click mueve al activo de la tanda (portero o lanzador).
+  if (s.phase === 'penalti') {
+    if (!penaltyGuard(s).ok) return;
+    const activeId = s.penaltyStep === 'keeper' ? s.penaltyKeeperId : s.penaltyShooterId;
+    if (g.ui.mode !== 'moving' || g.ui.selectedId === null || g.ui.selectedId !== activeId || activeId === null) return;
+    const res = s.penaltyStep === 'keeper'
+      ? doPenaltyKeeperMove(s, activeId, cell)
+      : doPenaltyShooterMove(s, activeId, cell);
+    if (res.ok) {
+      applyEvents(res.events);
+      saveMatch(s);
+      setMode('idle');
+      checkGameOver();
+      maybeDriveAi();
+    } else {
+      setMode('idle');
+    }
+    return;
+  }
+  if (s.phase !== 'playing') return;
   if (g.ui.mode === 'moving' && g.ui.selectedId !== null) {
     const res = doMove(s, g.ui.selectedId, cell);
     if (res.ok) {
@@ -204,7 +234,13 @@ export function boardCellClick(cell: Cell): void {
 
 export function boardTokenClick(id: number): void {
   const s = g.state.value;
-  if (!s || s.phase !== 'playing' || g.ui.busyAi) return;
+  if (!s || g.ui.busyAi) return;
+  // En la tanda solo se puede mirar (el movimiento va por casilla).
+  if (s.phase === 'penalti') {
+    selectPlayer(id);
+    return;
+  }
+  if (s.phase !== 'playing') return;
   const p = getPlayer(s, id);
   if (!p) return;
 
@@ -289,12 +325,48 @@ export function actionShotConfirm(kind: ShotKind = 'normal'): boolean {
   if (res.ok) {
     applyEvents(res.events);
     saveMatch(s);
-    if (s.phase === 'fulltime') g.ui.gameOver = true;
+    checkGameOver();
     g.ui.selectedId = s.ball.carrier;
     setMode('idle');
     return true;
   }
   return false;
+}
+
+/** Fin de partido (o entrada en la tanda si la copa lo pide). */
+function checkGameOver(): void {
+  const s = g.state.value;
+  if (!s || s.phase !== 'fulltime') return;
+  // En copa, el empate no se queda empatado: tanda de penaltis 1v1.
+  if (s.config.cup && s.penaltyWinner === null && s.score[0] === s.score[1]) {
+    const events = enterPenalties(s);
+    applyEvents(events);
+    saveMatch(s);
+    g.ui.turnBanner = '¡Tanda de penaltis!';
+    window.setTimeout(() => (g.ui.turnBanner = null), duration(1600) + 50);
+    maybeDriveAi();
+    return;
+  }
+  g.ui.gameOver = true;
+  clearSavedMatch();
+  stopMusic();
+  void g.state.value; // re-leído por si la copa lo pide después
+}
+
+/** ¿Le toca a la máquina ahora mismo (cualquier modo con IA)? */
+function aiHasTheBall(): boolean {
+  const s = g.state.value;
+  if (!s) return false;
+  return aiControlsTeam(s, s.currentTeam);
+}
+
+/** Arranca el bucle de la IA si el equipo activo es máquina. */
+function maybeDriveAi(): void {
+  const s = g.state.value;
+  if (!s || g.ui.busyAi) return;
+  if (s.phase !== 'playing' && s.phase !== 'penalti') return;
+  if (!aiHasTheBall()) return;
+  void runAiDrive();
 }
 
 export function actionSteal(victimId: number): boolean {
@@ -375,28 +447,104 @@ export function actionCut(): boolean {
   return false;
 }
 
+/** «Endurecer»: 1 AP de todo el equipo; protege durante el turno rival. */
+export function actionHarden(): boolean {
+  const s = g.state.value;
+  if (!s || s.phase !== 'playing') return false;
+  const res = doHarden(s);
+  if (res.ok) {
+    applyEvents(res.events);
+    saveMatch(s);
+    return true;
+  }
+  return false;
+}
+
+/* Tanda de penaltis ------------------------------------------------------ */
+
+/** Probabilidad de gol del próximo lanzamiento (para el panel). */
+export function penaltyChancePreview(): number | null {
+  const s = g.state.value;
+  if (!s || s.phase !== 'penalti') return null;
+  const shooter = s.penaltyShooterId === null ? null : getPlayer(s, s.penaltyShooterId);
+  const keeper = s.penaltyKeeperId === null ? null : getPlayer(s, s.penaltyKeeperId);
+  if (!shooter || !keeper) return null;
+  return penaltyChance(s, shooter, keeper);
+}
+
+/** «Listo»: el paso de la tanda se da por terminado (portero o lanzador). */
+export function actionPenaltyReady(): boolean {
+  const s = g.state.value;
+  if (!s || g.ui.busyAi) return false;
+  if (!penaltyGuard(s).ok) return false;
+  const res = advancePenalty(s);
+  if (!res.ok) return false;
+  applyEvents(res.events);
+  saveMatch(s);
+  setMode('idle');
+  checkGameOver();
+  maybeDriveAi();
+  return true;
+}
+
+/** Lanzamiento del penalti con el activo de la tanda. */
+export function actionPenaltyShoot(): boolean {
+  const s = g.state.value;
+  if (!s || g.ui.busyAi) return false;
+  if (s.penaltyShooterId === null) return false;
+  const res = doPenaltyShot(s, s.penaltyShooterId);
+  if (!res.ok) return false;
+  applyEvents(res.events);
+  saveMatch(s);
+  setMode('idle');
+  checkGameOver();
+  maybeDriveAi();
+  return true;
+}
+
+/** Datos de la tanda para el panel (marcador de lanzamientos y goles). */
+export function penaltyPanelInfo(): {
+  active: boolean;
+  step: 'keeper' | 'shooter' | 'none';
+  kicks: [number, number];
+  shooterName: string;
+  keeperName: string;
+} {
+  const s = g.state.value;
+  if (!s || s.phase !== 'penalti') {
+    return { active: false, step: 'none', kicks: [0, 0], shooterName: '', keeperName: '' };
+  }
+  const shooter = s.penaltyShooterId === null ? null : getPlayer(s, s.penaltyShooterId);
+  const keeper = s.penaltyKeeperId === null ? null : getPlayer(s, s.penaltyKeeperId);
+  return {
+    active: true,
+    step: s.penaltyStep,
+    kicks: [s.penaltyKicks[0], s.penaltyKicks[1]],
+    shooterName: shooter?.name ?? '',
+    keeperName: keeper?.name ?? ''
+  };
+}
+
 export function finishTurn(): boolean {
   const s = g.state.value;
   if (!s || s.phase !== 'playing') return false;
   const res = endTurn(s);
   if (!res.ok) return false;
   // endTurn muta el estado (TS no puede verlo): relee de forma explícita
-  const phaseAfter = (s as { phase: 'playing' | 'fulltime' }).phase;
+  const phaseAfter = (s as { phase: Phase }).phase;
   applyEvents(res.events);
   saveMatch(s);
   g.ui.selectedId = null;
   g.ui.mode = 'idle';
   g.highlightCells.value = [];
   if (phaseAfter === 'fulltime') {
-    g.ui.gameOver = true;
-    clearSavedMatch();
-    stopMusic();
+    checkGameOver();
     return true;
   }
   g.ui.turnBanner = teamLabel(s, s.currentTeam);
   window.setTimeout(() => (g.ui.turnBanner = null), duration(1300) + 50);
-  if (s.config.mode === 'ai' && s.config.aiTeam === s.currentTeam) {
-    void runAiTurn();
+  if (aiHasTheBall()) {
+    void runAiDrive();
   }
   return true;
 }
@@ -405,19 +553,43 @@ export function finishTurn(): boolean {
 
 const AI_DELAY = 640;
 
-async function runAiTurn(): Promise<void> {
+/**
+ * Bucle maestro de la máquina: dirige acciones en el tablero, turnos y
+ * (si la tanda toca) los pasos del penalti del equipo activo.
+ */
+async function runAiDrive(): Promise<void> {
   const s = g.state.value;
   if (!s) return;
   g.ui.busyAi = true;
   await sleep(duration(600) + 40);
-  let guard = 64;
+  let guard = 260;
   try {
-    while (
-      s.phase === 'playing' &&
-      s.config.mode === 'ai' &&
-      s.config.aiTeam === s.currentTeam &&
-      guard-- > 0
-    ) {
+    while (guard-- > 0) {
+      // Tanda de penaltis: pasos y lanzamientos del equipo máquina.
+      if (s.phase === 'penalti') {
+        if (!penaltyGuard(s).ok) break;
+        if (!aiHasTheBall()) break;
+        const d = nextAiPenaltyAction(s);
+        if (d) {
+          const ok = d.kind === 'penaltyMove'
+            ? (s.penaltyStep === 'keeper'
+              ? doPenaltyKeeperMove(s, d.playerId, d.dest).ok
+              : doPenaltyShooterMove(s, d.playerId, d.dest).ok)
+            : doPenaltyShot(s, d.playerId).ok;
+          if (!ok) break;
+          saveMatch(s);
+          await sleep(duration(d.kind === 'penaltyMove' ? 700 : 950));
+          continue;
+        }
+        const adv = advancePenalty(s);
+        if (!adv.ok) break;
+        applyEvents(adv.events);
+        saveMatch(s);
+        await sleep(duration(700));
+        continue;
+      }
+      if (s.phase !== 'playing') break;
+      if (!aiHasTheBall()) break;
       const d: AiDecision = nextAiAction(s);
       if (!d) break;
       let ok = false;
@@ -427,6 +599,8 @@ async function runAiTurn(): Promise<void> {
         case 'shoot': ok = doShoot(s, d.playerId, d.shotKind ?? 'normal').ok; break;
         case 'steal': ok = doSteal(s, d.playerId, d.victimId).ok; break;
         case 'hack': ok = doHack(s, d.playerId, d.victimId).ok; break;
+        case 'harden': ok = doHarden(s).ok; break;
+        default: break;
       }
       if (!ok) break;
       saveMatch(s);
@@ -434,9 +608,8 @@ async function runAiTurn(): Promise<void> {
     }
   } finally {
     g.ui.busyAi = false;
-    if (s.phase === 'playing' && s.config.mode === 'ai' && s.config.aiTeam === s.currentTeam) {
-      finishTurn();
-    }
+    if (s.phase === 'playing' && aiHasTheBall()) finishTurn();
+    // Si la IA acabó la tanda, el resultado queda gobernado por checkGameOver.
   }
 }
 

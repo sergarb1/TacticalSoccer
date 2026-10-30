@@ -1,7 +1,7 @@
 /**
  * Pases: alcance, probabilidad de éxito y resolución con interceptaciones.
  */
-import { PROB, PRESSURE_CAP, passRange } from './config';
+import { PROB, PRESSURE_CAP, passRange, HARDEN_INTERCEPT_CUT, HARDEN_INTERCEPT } from './config';
 import { cheby, distToSegment, clampCell } from './field';
 import { pressureAt, enemyOf, teamPlayers, playerById } from './rules';
 import type { Cell, GameState, Player, SoundName } from './types';
@@ -72,9 +72,11 @@ function bestInterceptor(
     const cutting = p.stance === 'cut';
     const d = distToSegment(p.pos, from, to);
     if (d > (cutting ? 2 : 1)) continue;
+    // Defensa endurecida del equipo interceptor: lectura alertada.
+    const hardenBonus = state.harden?.[p.team] ? (cutting ? HARDEN_INTERCEPT_CUT : HARDEN_INTERCEPT) : 0;
     const chance = cutting
-      ? Math.max(20, 48 + (p.stats.defense - 5) * 5)
-      : Math.max(5, 30 + (p.stats.defense - 5) * 4 - d * 15);
+      ? Math.max(20, 48 + (p.stats.defense - 5) * 5 + hardenBonus)
+      : Math.max(5, 30 + (p.stats.defense - 5) * 4 - d * 15 + hardenBonus);
     if (!best || chance > best.chance) best = { player: p, chance };
   }
   return best;

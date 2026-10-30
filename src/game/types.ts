@@ -58,7 +58,7 @@ export interface TeamStats {
   steals: number;
 }
 
-export type MatchMode = 'hotseat' | 'ai';
+export type MatchMode = 'hotseat' | 'ai' | 'aivsai';
 export type AiLevel = 'easy' | 'normal' | 'hard';
 export type AiTeam = 0 | 1 | null;
 export type MatchPhase = 'playing' | 'fulltime';
@@ -77,9 +77,11 @@ export interface MatchConfig {
   aiTeam: AiTeam;
   aiLevel: AiLevel;
   seed: number;
+  /** El empate se desempata con la tanda 1v1 jugada en el tablero (Copa Capello). */
+  cup?: boolean;
 }
 
-export type Phase = 'playing' | 'fulltime';
+export type Phase = 'playing' | 'fulltime' | 'penalti';
 
 export interface LogEntry {
   min: number;
@@ -95,6 +97,18 @@ export interface GameState {
   meter: [number, number];
   /** Usos de acciones especiales restantes por equipo (Billetes, Vaselina, Hachazo). */
   specials: [number, number];
+  /** Defensa endurecida por equipo: activa durante el turno rival y a consumo. */
+  harden: [boolean, boolean];
+  /** Fase de penalti: id del lanzador y del portero (designados). */
+  penaltyShooterId: number | null;
+  penaltyKeeperId: number | null;
+  /** Ganador de un desempate por penalti (para copa/torneo). */
+  penaltyWinner: TeamId | null;
+  /** Contadores de la tanda: lanzamientos y goles por equipo. */
+  penaltyShots: [number, number];
+  penaltyKicks: [number, number];
+  /** Paso de cada tanda: primero se adelanta el portero (1 PA), luego lanza (3 PA). */
+  penaltyStep: 'keeper' | 'shooter';
   currentTeam: TeamId;
   /** Puntos de acción disponibles para currentTeam. */
   ap: number;
@@ -128,6 +142,11 @@ export type GameEvent =
   | { type: 'shot'; shooterId: number; kind: ShotKind; target: Cell; outcome: ShotOutcome; ballDest: Cell | null; goal: boolean }
   | { type: 'steal'; defenderId: number; success: boolean; hachazo?: boolean }
   | { type: 'cut'; defenderId: number; failed: boolean }
+  /** Acción de endurecer defensa (consume 1 PA del equipo defensor). */
+  | { type: 'harden'; team: TeamId }
+  | { type: 'penalty'; shooterId: number; keeperId: number; outcome: 'pending' | 'scored' | 'stopped' }
+  /** Resultado de un lanzamiento de la tanda (`decided` = se acabó el desempate). */
+  | { type: 'penaltyKick'; team: TeamId; scored: boolean; decided: boolean }
   | { type: 'pickup'; playerId: number }
   /** La barra llena concede una acción especial extra. */
   | { type: 'meter'; team: TeamId; meter: number; full: boolean }
@@ -166,5 +185,10 @@ export type StealErrorCode =
 export type HackErrorCode =
   | 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted' | 'no_carrier'
   | 'too_far' | 'same_team' | 'no_special';
+export type HardenErrorCode =
+  | 'not_your_turn' | 'phase_ended' | 'no_ap';
+export type PenaltyErrorCode =
+  | 'penalty_step' | 'bad_player' | 'penalty_bad_dest' | 'penalty_no_shooter'
+  | 'not_your_turn' | 'no_ap' | 'phase_ended';
 export type CutErrorCode =
   | 'not_your_turn' | 'phase_ended' | 'no_ap' | 'already_acted' | 'no_carrier' | 'too_far' | 'unknown_player';

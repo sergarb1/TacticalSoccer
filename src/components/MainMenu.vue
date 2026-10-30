@@ -7,6 +7,7 @@ const emit = defineEmits<{
   (e: 'vs-ai'): void;
   (e: 'tutorial'): void;
   (e: 'resume'): void;
+  (e: 'cup'): void;
 }>();
 
 const hasSave = hasSavedMatch();
@@ -26,6 +27,7 @@ void settings;
     <div class="panel menu-card">
       <button class="gold big" @click="emit('vs-ai')">🎮 Contra la máquina</button>
       <button class="primary big" @click="emit('hotseat')">👥 Dos jugadores</button>
+      <button class="cup big" @click="emit('cup')">🏆 Copa Capello</button>
       <button class="big" @click="emit('tutorial')">🎓 Tutorial</button>
       <button v-if="hasSave" class="big resume" @click="emit('resume')">▶ Continuar partida</button>
       <p class="foot">Gratuito, sin cuentas y sin conexión. Código MIT.</p>
@@ -70,5 +72,6 @@ void settings;
 }
 .big { width: 100%; font-size: 1rem; }
 .resume { border-color: var(--gold); color: var(--gold); }
+.cup { border-color: var(--gold); color: var(--gold); }
 .foot { color: var(--text-dim); font-size: 0.75rem; text-align: center; margin: 0.4rem 0 0; }
 </style>

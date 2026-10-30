@@ -11,11 +11,14 @@ import { reachable } from '../game/movement';
 import { passOptionsFor } from '../game/passing';
 import { readShot } from '../game/shooting';
 import { stealTargets, stealChance, hackTargets } from '../game/defense';
-import { HACK_BONUS, STEAL_RANGE } from '../game/config';
+import { HACK_BONUS, STEAL_RANGE, COST } from '../game/config';
+import {
+  penaltyChance, doPenaltyKeeperMove, doPenaltyShooterMove, penaltyGuard
+} from '../game/penalties';
 import { carrier, teamPlayers } from '../game/rules';
 import { cheby } from '../game/field';
 import type { AiLevel } from '../game/types';
-import type { Cell, GameState } from '../game/types';
+import type { Cell, GameState, Player } from '../game/types';
 import type { DifficultyProfile } from './difficulty';
 
 export type AiDecision =
@@ -24,7 +27,17 @@ export type AiDecision =
   | { kind: 'shoot'; playerId: number; shotKind?: 'normal' | 'billetes' | 'vaselina' }
   | { kind: 'hack'; playerId: number; victimId: number }
   | { kind: 'steal'; playerId: number; victimId: number }
+  | { kind: 'harden' }
+  | { kind: 'penaltyMove'; playerId: number; dest: Cell }
+  | { kind: 'penaltyShoot'; playerId: number }
   | null;
+
+/** ¿La IA maneja el equipo `team` en este estado de partida? */
+export function aiControlsTeam(state: GameState, team: 0 | 1): boolean {
+  if (state.config.mode === 'aivsai') return true; // espectáculo: los dos a la máquina
+  if (state.config.mode === 'ai') return state.config.aiTeam === team;
+  return false;
+}
 
 function rand(state: GameState): number {
   // tirada ligada al rng del estado: determinista y sin ventajas ocultas
@@ -35,9 +48,9 @@ function rand(state: GameState): number {
 
 /** Decide la siguiente acción del equipo actual (si es el equipo de la IA). */
 export function nextAiAction(state: GameState): AiDecision {
-  if (state.phase !== 'playing') return null;
+  if (state.phase !== 'playing') return nextAiPenaltyAction(state);
   const team = state.currentTeam;
-  if (state.config.mode !== 'ai' || state.config.aiTeam !== team) return null;
+  if (!aiControlsTeam(state, team)) return null;
   if (state.ap <= 0) return null; // sin AP no hay ninguna acción posible
   const prof = DIFFICULTY[state.config.aiLevel as AiLevel];
   const jitter = () => rand(state) * prof.jitter;
@@ -157,6 +170,11 @@ export function nextAiAction(state: GameState): AiDecision {
     ) {
       return { kind: 'hack', playerId: bestHack.id, victimId: bestHack.victim };
     }
+    // Defensa endurecida: si el robo no compensa y no hay postura previa,
+    // aprieta una vez (1 AP) para reforzar cortes y tapones del turno rival.
+    if (!state.harden[team] && state.ap >= COST.harden) {
+      return { kind: 'harden' };
+    }
     // 2) reubicación defensiva (tápeta entre el balón y mi portería)
     if (prof.positionalIQ) {
       const move = pickDefensiveMove(state, team, prof);
@@ -211,6 +229,66 @@ function pickDefensiveMove(
   }
   if (best && best.gain > 5) return { kind: 'move', playerId: best.id, dest: best.dest };
   return null;
+}
+
+/**
+ * IA de la tanda de penaltis.
+ * Portero: da un paso hacia la fila del lanzador si está a un paso
+ * (precompromete la parada) o se queda centrado.
+ * Lanzador: se acerca a la boca mientras gane probabilidad buscando una
+ * fila distinta a la del portero, y chuta cuando la ocasión ya es buena
+ * o no le queda margen de pasos.
+ */
+export type AiPenaltyDecision =
+  | { kind: 'penaltyMove'; playerId: number; dest: Cell }
+  | { kind: 'penaltyShoot'; playerId: number }
+  | null;
+
+export function nextAiPenaltyAction(state: GameState): AiPenaltyDecision {
+  if (state.phase !== 'penalti' || !penaltyGuard(state).ok) return null;
+  if (!aiControlsTeam(state, state.currentTeam)) return null;
+  const shooter = state.penaltyShooterId === null ? null : state.players.find((p) => p.id === state.penaltyShooterId);
+  const keeper = state.penaltyKeeperId === null ? null : state.players.find((p) => p.id === state.penaltyKeeperId);
+  if (!shooter || !keeper) return null;
+
+  if (state.penaltyStep === 'keeper') {
+    if (state.ap < 1) return null; // se queda donde está: el flujo avanza
+    const dr = shooter.pos.row - keeper.pos.row;
+    if (Math.abs(dr) === 1) {
+      return { kind: 'penaltyMove', playerId: keeper.id, dest: { col: keeper.pos.col, row: shooter.pos.row } };
+    }
+    if (dr !== 0) {
+      // cruzado: último paso hacia el centro (el tirador suele estar ahí)
+      const nudge = dr > 0 ? 1 : -1;
+      return { kind: 'penaltyMove', playerId: keeper.id, dest: { col: keeper.pos.col, row: keeper.pos.row + nudge } };
+    }
+    return null;
+  }
+
+  // Turno del lanzador.
+  if (state.ap < 1) return null;
+  const chanceHere = penaltyChance(state, shooter, keeper);
+  if (state.ap <= 1 || chanceHere >= 42) {
+    return { kind: 'penaltyShoot', playerId: shooter.id };
+  }
+  // Busca un paso (dentro del área) que mejore la lectura: acercarse a la
+  // boca, nunca por la fila del portero si hay alternativa.
+  const r = reachable(state, shooter);
+  let best: { dest: Cell; gain: number } | null = null;
+  for (const path of r.paths.values()) {
+    if (path.length !== 2) continue; // solo un paso
+    const dest = path[1];
+    const ghost = { ...shooter, pos: dest };
+    const gain = penaltyChance(state, ghost as Player, keeper) - chanceHere;
+    if (gain > 0 && (!best || gain > best.gain)) best = { dest, gain };
+  }
+  if (best) return { kind: 'penaltyMove', playerId: shooter.id, dest: best.dest };
+  return { kind: 'penaltyShoot', playerId: shooter.id };
+}
+
+/** Frase de narrador para la IA de penaltis (usada por la copa simulada). */
+export function aiControlsBoth(state: GameState): boolean {
+  return state.config.mode === 'aivsai';
 }
 
 export { goalColOf };

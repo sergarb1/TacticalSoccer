@@ -6,7 +6,8 @@
  */
 import {
   AP_PER_TURN, COST, MINUTES_PER_TURN, TURNS_PER_HALF, TEAM_COLORS, passRange,
-  SHOT_COST, SHOT_LABEL, CUT_RANGE, HACK_RANGE, HACK_BONUS, METER_MAX, SPECIALS_PER_MATCH
+  SHOT_COST, SHOT_LABEL, CUT_RANGE, HACK_RANGE, HACK_BONUS, METER_MAX, SPECIALS_PER_MATCH,
+  HARDEN_STEAL_BONUS, HARDEN_BLOCK_WEIGHT, HARDEN_INTERCEPT_CUT, HARDEN_INTERCEPT
 } from './config';
 import { Stream } from './rng';
 import {
@@ -14,6 +15,12 @@ import {
 } from './rules';
 import { reachable, cellKey } from './movement';
 import { passOptionsFor, resolvePass, passChance } from './passing';
+import {
+  enterPenalties, penaltyChance, doPenaltyKeeperMove, doPenaltyShooterMove, doPenaltyShot, advancePenalty
+} from './penalties';
+export {
+  enterPenalties, penaltyChance, doPenaltyKeeperMove, doPenaltyShooterMove, doPenaltyShot, advancePenalty
+} from './penalties';
 import { readShot, resolveShot, shotTarget, keeperOf } from './shooting';
 import { stealTargets, resolveSteal, cutTargets, hackTargets, stealChance } from './defense';
 import { applyKickoff } from './formations';
@@ -64,6 +71,13 @@ export function createMatch(cfg: MatchConfig): GameState {    const state: GameS
     phase: 'playing',
     meter: [0, 0],
     specials: [SPECIALS_PER_MATCH, SPECIALS_PER_MATCH],
+    harden: [false, false],
+    penaltyShooterId: null,
+    penaltyKeeperId: null,
+    penaltyWinner: null,
+    penaltyShots: [0, 0],
+    penaltyKicks: [0, 0],
+    penaltyStep: 'keeper',
     currentTeam: 0,
     ap: AP_PER_TURN,
     turnInHalf: 0,
@@ -372,6 +386,28 @@ export function doCut(state: GameState, defenderId: number): ActionResult {
 /* ------------------------------------------------------------------ */
 
 /** Pasa el turno al otro equipo, avanza el reloj y gestiona descanso/final. */
+/* ------------------------------------------------------------------ */
+/* Endurecer defensa                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * «Endurecer defensa»: el equipo consume 1 AP y aprieta durante el turno
+ * rival: robos con HARDEN_STEAL_BONUS más probabilidad, interceptaciones y
+ * tapones reforzados. La marca se disuelve al comenzar el turno propio.
+ */
+export function doHarden(state: GameState): ActionResult {
+  const events: GameEvent[] = [];
+  if (state.phase !== 'playing') return { ok: false, code: 'phase_ended', message: 'El partido ha terminado.', events: [] };
+  if (state.ap < COST.harden) return { ok: false, code: 'no_ap', message: 'No tienes suficientes puntos de acción.', events: [] };
+  state.ap -= COST.harden;
+  state.harden[state.currentTeam] = true;
+  emit(events, 'cut');
+  events.push({ type: 'harden', team: state.currentTeam });
+  log(state, `${teamLabel(state, state.currentTeam)} endurece la defensa: +${HARDEN_STEAL_BONUS}% en robos, y cortes y tapones más anchos durante el turno rival.`);
+  return { ok: true, message: state.message, events };
+}
+
+/** Pasa el turno al otro equipo, avanza el reloj y gestiona descanso/final. */
 export function endTurn(state: GameState): ActionResult {
   if (state.phase !== 'playing') {
     return { ok: false, code: 'phase_ended', message: 'El partido ha terminado.', events: [] };
@@ -411,6 +447,9 @@ export function endTurn(state: GameState): ActionResult {
 
   state.currentTeam = enemyOf(state.currentTeam);
   state.ap = AP_PER_TURN;
+  // La defensa endurecida cubre solo el turno del rival: al llegar el turno
+  // propio, se disuelve (igual que las posturas de corte).
+  state.harden[state.currentTeam] = false;
   for (const p of state.players) {
     if (p.team === state.currentTeam) {
       p.hasMoved = false;

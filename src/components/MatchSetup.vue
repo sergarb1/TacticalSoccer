@@ -13,7 +13,7 @@ const homeId = ref('sur');
 const awayId = ref('norte');
 const homeFormation = ref('1-2-1');
 const awayFormation = ref('2-1-1');
-const mode = ref<'hotseat' | 'ai'>('ai');
+const mode = ref<'hotseat' | 'ai' | 'aivsai'>('ai');
 const aiLevel = ref<'easy' | 'normal' | 'hard'>(savedAiLevel.value);
 
 const home = computed(() => teamById(homeId.value));
@@ -50,7 +50,7 @@ function start(): void {
     home: { teamId: homeId.value, formation: homeFormation.value },
     away: { teamId: awayId.value, formation: awayFormation.value },
     mode: mode.value,
-    aiTeam: mode.value === 'ai' ? 1 : null,
+    aiTeam: mode.value === 'hotseat' ? null : (mode.value === 'ai' ? 1 : 0),
     aiLevel: aiLevel.value,
     seed: Math.floor(Math.random() * 4294967295)
   };
@@ -92,7 +92,8 @@ const statLabels = [
         <h2>Modo de juego</h2>
         <label><input v-model="mode" type="radio" value="hotseat" /> Dos jugadores (mismo dispositivo)</label>
         <label><input v-model="mode" type="radio" value="ai" /> Contra la máquina (IA azul)</label>
-        <div v-if="mode === 'ai'" class="ai-levels">
+        <label><input v-model="mode" type="radio" value="aivsai" /> IA vs IA (modo espectador)</label>
+        <div v-if="mode !== 'hotseat'" class="ai-levels">
           <p class="desc">Dificultad de la IA:</p>
           <label><input v-model="aiLevel" type="radio" value="easy" /> Fácil</label>
           <label><input v-model="aiLevel" type="radio" value="normal" /> Normal</label>

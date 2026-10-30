@@ -6,7 +6,7 @@
  * se han plantado a cortar (postura 'cut').
  * Módulo puro: modifica el GameState que recibe y devuelve el desenlace.
  */
-import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP, SHOT_LABEL } from './config';
+import { GOAL_CENTER_ROW, FIELD_COLS, FIELD_ROWS, PRESSURE_CAP, SHOT_LABEL, HARDEN_BLOCK_WEIGHT } from './config';
 import { euclid, inField } from './field';
 import { enemyOf, isOccupied } from './rules';
 import type { Cell, GameState, Player, ShotKind, ShotOutcome, SoundName } from './types';
@@ -62,7 +62,9 @@ function blockersOnLine(state: GameState, shooter: Player, target: Cell): number
     const py = shooter.pos.row + t * vy;
     const d = Math.hypot(p.pos.col - px, p.pos.row - py);
     const radius = p.stance === 'cut' ? 1.7 : 0.9;
-    if (d <= radius) n += p.stance === 'cut' ? 2.2 : 1;
+    // Defensa endurecida: tapones con más peso mientras dure el turno rival.
+    const weight = (p.stance === 'cut' ? 2.2 : 1) + (state.harden?.[p.team] ? HARDEN_BLOCK_WEIGHT : 0);
+    if (d <= radius) n += weight;
     if (n >= 3) break;
   }
   return n;
