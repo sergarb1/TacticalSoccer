@@ -174,7 +174,7 @@ const pen = computed(() => props.penalty ?? null);</script>
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
-      <p class="hint">El hachazo gasta 1 PA y una acción especial: llega a 2 casillas y roba con más garra. Si aciertas, tu barra también carga.</p>
+      <p class="hint">El hachazo gasta 1 PA y una acción especial: llega a 1 casilla, o a 2 en línea recta sin nadie en medio, y roba con más garra. Si aciertas, tu barra también carga.</p>
     </template>
 
     <!-- robos disponibles -->

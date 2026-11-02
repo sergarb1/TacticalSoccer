@@ -122,7 +122,7 @@ const contextualTip = computed(() => {
   if (ui.selectedId ===null) return 'Pulsa una ficha con anillo blanco: tienes 3 PA para mover, pasar, chutar o defender.';
   const sel = s.players.find((p) => p.id === ui.selectedId);
   if (sel && sel.team === s.currentTeam && s.currentTeam === (s.config.mode === 'ai' ? 0 : s.currentTeam)) {
-    return 'Elige una acción de esta ficha en el panel de la derecha, o «Terminar turno».';
+    return 'Elige una acción en el modal al seleccionar la ficha, o «Terminar turno» en el FAB.';
   }
   return 'Si te quedas sin ideas: mover al espacio, pasar y chutar pronto gana partidos.';
 });
@@ -404,34 +404,6 @@ function endTutorial(): void {
 
         <div class="side-col">
           <PlayerPanel :state="state" :selected-id="ui.selectedId" />
-          <ActionPanel
-            :state="state"
-            :selected-id="ui.selectedId"
-            :mode="ui.mode"
-            :pass-options-list="passOptions"
-            :steal-options="stealOptions"
-            :hack-options="hackOptions"
-            :cut-options="cutOptions"
-            :shot-reads="shotReads ?? undefined"
-            @move="actionMove()"
-            @pass-mode="setMode('passing')"
-            @pass-to="actionPass($event)"
-            @steal-mode="setMode('stealing')"
-            @steal="actionSteal($event)"
-            @hack-mode="setMode('hacking')"
-            @hack="actionHack($event)"
-            @cut-mode="setMode('cutting')"
-            @cut="actionCut()"
-            @shoot-arm="actionShotArm()"
-            @shoot="onShot"
-            @shoot-cancel="cancelMode()"
-            @cancel="cancelMode()"
-            @end-turn="finishTurn()"
-            :penalty="penaltyUi"
-            @harden="actionHarden()"
-            @penalty-ready="actionPenaltyReady()"
-            @penalty-shoot="actionPenaltyShoot()"
-          />
           <MiniMap :state="state" @token-click="boardTokenClick" />
           <section class="panel mini-stats">
             <div class="ms-row"><span>Tiros</span><b>{{ state.stats[0].shots }}</b><b>{{ state.stats[1].shots }}</b></div>
@@ -658,7 +630,7 @@ function endTutorial(): void {
     min-width: 0;
     min-height: 0;
   }
-  .side-col { display: none; }  /* el marcador del panel pasa al modal y al FAB */
+  .side-col { display: none; }  /* minimapa y ficha quedan en el FAB/modal y menú pausa */
   .board-col > .board-wrap { flex: 1 1 auto; min-height: 0; }
   .tip-strip,
   .nudge-card { display: none; }
@@ -670,66 +642,69 @@ function endTutorial(): void {
   }
 }
 
-/* ------- FAB de acciones (solo móvil apaisado) ------- */
-.actions-fab { display: none; }
+/* ------- FAB de acciones (todas las pantallas) ------- */
+.actions-fab {
+  display: flex;
+  position: fixed;
+  right: calc(0.6rem + env(safe-area-inset-right));
+  bottom: calc(0.8rem + env(safe-area-inset-bottom));
+  align-items: center;
+  gap: 0.45rem;
+  z-index: 55;
+}
+.actions-fab button {
+  min-height: 44px;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+}
+.fab-pa {
+  font-weight: 800;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  background: rgba(6, 14, 10, 0.85);
+}
+/* en móvil apaisado la radio está abajo: el FAB se eleva por encima */
 @media (max-width: 900px) and (orientation: landscape) {
-  .actions-fab {
-    display: flex;
-    position: fixed;
-    right: calc(0.6rem + env(safe-area-inset-right));
-    bottom: calc(2.9rem + env(safe-area-inset-bottom));
-    align-items: center;
-    gap: 0.45rem;
-    z-index: 55;
-  }
-  .actions-fab button {
-    min-height: 44px;
-    font-size: 0.95rem;
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
-  }
-  .fab-pa {
-    font-weight: 800;
-    color: var(--gold);
-    border: 1px solid var(--gold);
-    border-radius: 999px;
-    padding: 0.15rem 0.6rem;
-    background: rgba(6, 14, 10, 0.85);
-  }
+  .actions-fab { bottom: calc(2.9rem + env(safe-area-inset-bottom)); }
 }
 
-/* ------- modal de acciones (solo móvil apaisado) ------- */
+/* ------- modal de acciones (todas las pantallas) ------- */
 .actions-modal { display: none; }
+.actions-modal.open {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 11, 8, 0.55);
+  backdrop-filter: blur(2px);
+}
+.actions-sheet {
+  position: relative;
+  width: min(96vw, 560px);
+  max-height: 82dvh;
+  overflow-y: auto;
+  padding: 0.8rem 0.9rem 1rem;
+}
+.sheet-close {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.35rem;
+  min-height: 32px;
+  padding: 0.15rem 0.6rem;
+}
+.sheet-title {
+  display: block;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+}
+/* en móvil apaisado sale como sheet inferior (pulgar cerca) */
 @media (max-width: 900px) and (orientation: landscape) {
-  .actions-modal.open {
-    display: flex;
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    align-items: flex-end;
-    justify-content: center;
-    background: rgba(5, 11, 8, 0.55);
-    backdrop-filter: blur(2px);
-  }
-  .actions-sheet {
-    position: relative;
-    width: min(96vw, 560px);
-    max-height: 82dvh;
-    overflow-y: auto;
-    padding: 0.8rem 0.9rem 1rem;
-  }
-  .sheet-close {
-    position: absolute;
-    top: 0.3rem;
-    right: 0.35rem;
-    min-height: 32px;
-    padding: 0.15rem 0.6rem;
-  }
-  .sheet-title {
-    display: block;
-    font-size: 1.05rem;
-    letter-spacing: 0.04em;
-    margin-bottom: 0.3rem;
-  }
+  .actions-modal.open { align-items: flex-end; }
 }
 
 /* ------- aviso de orientación: solo en vertical de móvil ------- */

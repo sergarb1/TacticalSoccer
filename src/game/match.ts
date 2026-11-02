@@ -313,10 +313,10 @@ export function doSteal(state: GameState, defenderId: number, victimId: number):
 /* ------------------------------------------------------------------ */
 
 /**
- * «Hachazo»: robo premium. Gasta 1 AP y una acción especial; llega hasta
- * HACK_RANGE casillas (el doble del robo normal) y roba con más
- * probabilidad (+HACK_BONUS). Al contrario que el robo normal, al acertar
- * el futbolista queda agotado: el hachazo se come el turno.
+ * «Hachazo»: robo premium. Gasta 1 AP y una acción especial; roba con más
+ * probabilidad (+HACK_BONUS) y llega a 2 casillas solo si la línea al
+ * portador está despejada (ver hackTargets). Al contrario que el robo
+ * normal, al acertar el futbolista queda agotado: el hachazo se come el turno.
  */
 export function doHack(state: GameState, defenderId: number, victimId: number): ActionResult {
   const d = getPlayer(state, defenderId);

@@ -173,4 +173,22 @@ label { font-size: 0.85rem; display: flex; gap: 0.4rem; align-items: center; }
 .actions { display: flex; justify-content: center; gap: 1rem; margin-top: 1.4rem; }
 .big { font-size: 1.05rem; padding: 0.7rem 2.2rem; }
 @media (max-width: 980px) { .columns { grid-template-columns: 1fr; } }
+
+/* móvil: todo más compacto para pisar «Comenzar partido» cuanto antes */
+@media (max-width: 700px) {
+  .setup { max-width: 480px; padding: 0.7rem 0.7rem 1.2rem; }
+  .setup :deep(h1), h1 { font-size: 1.5rem; }
+  .subtitle { margin: 0 0 0.55rem; font-size: 0.82rem; }
+  .columns { gap: 0.55rem; }
+  .col { padding: 0.65rem 0.7rem; }
+  h2 { font-size: 1rem; }
+  .desc { display: none; }  /* cháchara fuera: al grano en el móvil */
+  select { padding: 0.4rem 0.5rem; }
+  .roster { font-size: 0.66rem; gap: 2px; margin-top: 0.35rem; }
+  .roster li { grid-template-columns: 18px 1fr 34px auto; padding: 1px 3px; }
+  .mode-col { gap: 0.35rem; }
+  label { font-size: 0.8rem; }
+  .actions { margin-top: 0.7rem; gap: 0.7rem; }
+  .big { font-size: 0.95rem; padding: 0.6rem 1.4rem; }
+}
 </style>

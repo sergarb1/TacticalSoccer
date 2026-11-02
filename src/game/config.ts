@@ -86,7 +86,7 @@ export const STEAL_RANGE = 1;
 /** Distancia de chebyshev máxima para plantarse a cortar líneas. */
 export const CUT_RANGE = 2;
 
-/** Alcance (chebyshev) del Hachazo robador: llega donde el robo normal no llega. */
+/** Alcance (chebyshev) del Hachazo: 2 casillas solo en línea recta y despejada. */
 export const HACK_RANGE = 2;
 /** Aumento de probabilidad del Hachazo sobre el robo normal (puntos %). */
 export const HACK_BONUS = 25;

@@ -114,7 +114,7 @@ export function haptic(pattern: number | number[]): void {
 const SPECIAL_FX: Record<SpecialFxKind, { icon: string; title: string; sub: string }> = {
   billetes: { icon: '💸', title: 'TIRO BILLETES', sub: '¡Faro de billetes directo a la red: riesgo y gloria a partes iguales!' },
   vaselina: { icon: '🕊️', title: 'VASELINA', sub: 'El balón se va por arriba: o es golazo del año o risa del estadio.' },
-  hachazo: { icon: '⚡', title: 'HACHAZO', sub: '¡A por el balón con guantazo! Roba con más garra y desde más lejos.' }
+  hachazo: { icon: '⚡', title: 'HACHAZO', sub: '¡A por el balón con guantazo! Roba con más garra, a 1 casilla o a 2 si la línea está despejada.' }
 };
 
 let specialFxTimer: number | null = null;

@@ -4,7 +4,7 @@
  */
 import { PROB, STEAL_RANGE, CUT_RANGE, HACK_RANGE, HARDEN_STEAL_BONUS } from './config';
 import { cheby } from './field';
-import { carrier } from './rules';
+import { carrier, isOccupied } from './rules';
 import type { Cell, GameState, Player, SoundName } from './types';
 
 /** Probabilidad (0..100) de robar el balón al portador. */
@@ -35,13 +35,27 @@ export function cutTargets(state: GameState, defender: Player): Player[] {
 }
 
 /**
- * Objetivos válidos para el «hachazo» robador: el portador rival a un
- * chebyshev ≤ HACK_RANGE (llega donde el robo normal no llega).
+ * Objetivos válidos para el «hachazo» robador: el portador rival a una
+ * casilla (como el robo) o a dos SOLO si está en línea recta y nadie se
+ * interpone en el camino: a dos en diagonal o con lluvia de encapuchados
+ * en medio, el machete no llega.
  */
 export function hackTargets(state: GameState, defender: Player): Player[] {
   const c = carrier(state);
   if (!c || c.team === defender.team) return [];
-  if (cheby(defender.pos, c.pos) > HACK_RANGE) return [];
+  const dist = cheby(defender.pos, c.pos);
+  if (dist > HACK_RANGE) return [];
+  if (dist <= STEAL_RANGE) return [c];
+  // a 2 casillas: solo en línea recta (misma fila o misma columna) y sin
+  // ningún jugador en la casilla intermedia.
+  const dx = Math.abs(defender.pos.col - c.pos.col);
+  const dy = Math.abs(defender.pos.row - c.pos.row);
+  if (dx !== 0 && dy !== 0) return [];
+  const mid: Cell = {
+    col: (defender.pos.col + c.pos.col) / 2,
+    row: (defender.pos.row + c.pos.row) / 2
+  };
+  if (isOccupied(state, mid)) return [];
   return [c];
 }
 
