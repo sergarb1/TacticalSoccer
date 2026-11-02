@@ -577,7 +577,9 @@ function endTutorial(): void {
   opacity: 1;
   animation: rain-drift 0.7s linear infinite;
 }
-.game-screen > :not(.banner-layer) { position: relative; z-index: 1; }
+/* el contenido va por encima del fondo del clima; los fijos (radio, FAB,
+   modal, aviso de giro) no se tocan: necesitan su position y su z-index */
+.game-screen > :not(.banner-layer):not(.comm-bar):not(.actions-fab):not(.actions-modal):not(.rotate-overlay) { position: relative; z-index: 1; }
 @keyframes rain-drift {
   from { background-position: 0 0; }
   to { background-position: -22px 40px; }
@@ -639,13 +641,16 @@ function endTutorial(): void {
     height: 100dvh;
     overflow: hidden;
     gap: 0.4rem;
+    /* marcador arriba, tablero con el resto del alto: los fijos no cuentan */
+    grid-template-rows: auto minmax(0, 1fr);
     padding: calc(0.25rem + env(safe-area-inset-top)) calc(0.5rem + env(safe-area-inset-right)) calc(2.7rem + env(safe-area-inset-bottom)) calc(0.5rem + env(safe-area-inset-left));
   }
-  /* el tablero manda: todo el ancho para el campo */
+  /* el tablero manda: todo el ancho y el alto que sobra */
   .game-layout {
     flex: 1 1 auto;
     min-height: 0;
     gap: 0;
+    align-items: stretch;
   }
   .board-col {
     display: flex;

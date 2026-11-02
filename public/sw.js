@@ -3,7 +3,7 @@
  * Estrategia simple: runtime cache primero-responde + actualización en
  * segunda visita. Basta para jugar sin conexión una vez cargada la app.
  */
-const CACHE = 'tactical-soccer.v1';
+const CACHE = 'tactical-soccer.v2';  // v2: pantalla de juego reorganizada (móvil apaisado)
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
