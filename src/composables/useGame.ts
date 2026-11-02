@@ -37,6 +37,8 @@ export interface UiState {
   selectedId: number | null;
   mode: InteractionMode;
   turnBanner: string | null;
+  /** El banner de turno sale como telón a pantalla (no barrita). */
+  turnBig: boolean;
   busyAi: boolean;
   gameOver: boolean;
 }
@@ -47,6 +49,7 @@ const g = {
     selectedId: null,
     mode: 'idle',
     turnBanner: null,
+    turnBig: false,
     busyAi: false,
     gameOver: false
   }),
@@ -225,6 +228,7 @@ export function startMatch(cfg: MatchConfig): void {
   g.ui.mode = 'idle';
   g.ui.gameOver = false;
   g.ui.turnBanner = null;
+  g.ui.turnBig = false;
   g.highlightCells.value = [];
   saveMatch(g.state.value);
   // Modo espectáculo: la máquina saca y dirige ambos equipos.
@@ -239,6 +243,7 @@ export function tryResume(): GameState | null {
     g.ui.mode = 'idle';
     g.ui.gameOver = saved.phase === 'fulltime';
     g.ui.turnBanner = null;
+    g.ui.turnBig = false;
     g.highlightCells.value = [];
     if (!g.ui.gameOver) maybeDriveAi();
   }
@@ -447,8 +452,9 @@ function checkGameOver(): void {
     const events = enterPenalties(s);
     applyEvents(events);
     saveMatch(s);
-    g.ui.turnBanner = '¡Tanda de penaltis!';
-    window.setTimeout(() => (g.ui.turnBanner = null), duration(1600) + 50);
+  g.ui.turnBig = false;
+  g.ui.turnBanner = '¡Tanda de penaltis!';
+  window.setTimeout(() => (g.ui.turnBanner = null), duration(1600) + 50);
     maybeDriveAi();
     return;
   }
@@ -678,13 +684,30 @@ export function finishTurn(): boolean {
     checkGameOver();
     return true;
   }
-  g.ui.turnBanner = teamLabel(s, s.currentTeam);
-  window.setTimeout(() => (g.ui.turnBanner = null), duration(1300) + 50);
+  g.ui.turnBig = true;
+  g.ui.turnBanner = `CAMBIO DE TURNO · ${teamLabel(s, s.currentTeam)}`;
+  window.setTimeout(() => {
+    g.ui.turnBanner = null;
+    g.ui.turnBig = false;
+  }, duration(1700) + 50);
   if (aiHasTheBall()) {
     void runAiDrive();
   }
   return true;
 }
+
+/* PA a cero: el turno se acaba solo. La IA ya lo hace en su bucle; solo
+   lo automáticamente para el equipo del jugador, tras CUALQUIER acción
+   que agote los 3 PA. */
+watch(
+  () => g.state.value?.ap,
+  (ap) => {
+    const s = g.state.value;
+    if (!s || ap !== 0 || s.phase !== 'playing') return;
+    if (g.ui.busyAi || aiControlsTeam(s, s.currentTeam)) return;
+    void finishTurn();
+  }
+);
 
 /* IA --------------------------------------------------------------------- */
 

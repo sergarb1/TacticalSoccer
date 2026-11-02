@@ -73,6 +73,44 @@ withDefaults(
 .goal .banner-body { color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
 .big { top: 22%; }
 .banner-layer.goal.big { top: 0; }  /* el gol manda: siempre centrado */
+
+/* cambio de turno a toda pantalla: telón neutro, coge aire y se va */
+.banner-layer.turn.big {
+  top: 0;
+  bottom: 0;
+  align-items: center;
+}
+.banner-layer.turn.big::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(4, 10, 7, 0.28) 20%, rgba(4, 10, 7, 0.82) 100%);
+  animation: turn-curtain 1.9s ease forwards;
+}
+.banner-layer.turn.big .banner-body {
+  position: relative;
+  font-size: clamp(1.7rem, 6vw, 3.2rem);
+  letter-spacing: 0.12em;
+  padding: 1rem 2.6rem;
+  border-radius: 18px;
+  animation: turn-in 1.9s ease forwards;
+}
+@keyframes turn-curtain {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes turn-in {
+  from { transform: scale(0.92); opacity: 0.4; }
+  15% { transform: none; opacity: 1; }
+  82% { opacity: 1; }
+  to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .banner-layer.turn.big::before { animation: none; opacity: 0.9; }
+  .banner-layer.turn.big .banner-body { animation: none; }
+}
 .goal-big {
   animation: goal-banner-in 3.2s ease forwards;
   font-size: clamp(2.8rem, 11vw, 6rem);

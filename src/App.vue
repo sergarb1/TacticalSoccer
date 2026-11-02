@@ -73,11 +73,12 @@ const specialFx = computed(() => game.specialFx.value);
 
 /* ------- móvil apaisado: acciones en modal flotante ------- */
 const actionsOpen = ref(false);
-/* al elegir «Mover» se cierra: en ese modo manda el tablero */
+/* al elegir «Mover» o «Pasar» se cierra: en esos modos manda el tablero
+   (el pase se elige encima del campo, con las líneas al receptor) */
 watch(
   () => ui.mode,
   (m) => {
-    if (m === 'moving') actionsOpen.value = false;
+    if (m === 'moving' || m === 'passing') actionsOpen.value = false;
   }
 );
 /* al marcar ficha, el modal sale solo: no hay que andar buscando el botón */
@@ -458,6 +459,7 @@ function endTutorial(): void {
       <TurnBanner
         :text="ui.turnBanner ?? null"
         kind="turn"
+        :big="ui.turnBig"
         :team="state.currentTeam"
       />
       <TurnBanner
