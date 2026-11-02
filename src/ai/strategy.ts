@@ -10,8 +10,8 @@ import {
 import { reachable } from '../game/movement';
 import { passOptionsFor } from '../game/passing';
 import { readShot } from '../game/shooting';
-import { stealTargets, stealChance, hackTargets } from '../game/defense';
-import { HACK_BONUS, STEAL_RANGE, COST } from '../game/config';
+import { stealTargets, stealChance, hackTargets, hackBonusFor } from '../game/defense';
+import { STEAL_RANGE, COST } from '../game/config';
 import {
   penaltyChance, doPenaltyKeeperMove, doPenaltyShooterMove, penaltyGuard
 } from '../game/penalties';
@@ -148,14 +148,15 @@ export function nextAiAction(state: GameState): AiDecision {
           bestSteal = { id: p.id, victim: v.id, chance };
         }
         if (canSpecial) {
-          const hc = stealChance(state, p, v) + HACK_BONUS;
+          const hc = stealChance(state, p, v) + hackBonusFor(cheby(p.pos, v.pos));
           if (!bestHack || hc > bestHack.chance) bestHack = { id: p.id, victim: v.id, chance: hc };
         }
       }
       if (canSpecial) {
         for (const v of hackTargets(state, p)) {
-          if (cheby(p.pos, v.pos) <= STEAL_RANGE) continue; // esos ya salen en el robo normal
-          const hc = stealChance(state, p, v) + HACK_BONUS;
+          const dist = cheby(p.pos, v.pos);
+          if (dist <= STEAL_RANGE) continue; // esos ya salen en el robo normal
+          const hc = stealChance(state, p, v) + hackBonusFor(dist);
           if (!bestHack || hc > bestHack.chance) bestHack = { id: p.id, victim: v.id, chance: hc };
         }
       }

@@ -90,6 +90,8 @@ export const CUT_RANGE = 2;
 export const HACK_RANGE = 2;
 /** Aumento de probabilidad del Hachazo sobre el robo normal (puntos %). */
 export const HACK_BONUS = 25;
+/** Bonus del hachazo LEJANO (a 2 casillas): llega, pero roba con menos garra. */
+export const HACK_FAR_BONUS = 5;
 
 /* ------------------------------------------------------------------ */
 /* Endurecer defensa                                                    */

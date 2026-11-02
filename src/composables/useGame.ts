@@ -10,8 +10,8 @@ import {
 import { reachable } from '../game/movement';
 import { passOptionsFor } from '../game/passing';
 import { readShot } from '../game/shooting';
-import { stealChance, stealTargets, cutTargets, hackTargets } from '../game/defense';
-import { CUT_RANGE, HACK_RANGE, HACK_BONUS } from '../game/config';
+import { stealChance, stealTargets, cutTargets, hackTargets, hackBonusFor } from '../game/defense';
+import { CUT_RANGE, HACK_RANGE } from '../game/config';
 import { getPlayer } from '../game/rules';
 import {
   enterPenalties, doPenaltyKeeperMove, doPenaltyShooterMove, doPenaltyShot, advancePenalty,
@@ -114,7 +114,7 @@ export function haptic(pattern: number | number[]): void {
 const SPECIAL_FX: Record<SpecialFxKind, { icon: string; title: string; sub: string }> = {
   billetes: { icon: '💸', title: 'TIRO BILLETES', sub: '¡Faro de billetes directo a la red: riesgo y gloria a partes iguales!' },
   vaselina: { icon: '🕊️', title: 'VASELINA', sub: 'El balón se va por arriba: o es golazo del año o risa del estadio.' },
-  hachazo: { icon: '⚡', title: 'HACHAZO', sub: '¡A por el balón con guantazo! Roba con más garra, a 1 casilla o a 2 si la línea está despejada.' }
+  hachazo: { icon: '⚡', title: 'HACHAZO', sub: '¡A por el balón con guantazo! A 1 casilla roba con más garra; el hachazo lejano (a 2) llega con menos.' }
 };
 
 let specialFxTimer: number | null = null;
@@ -527,17 +527,20 @@ export function stealOpportunities(): Array<{ victimId: number; chance: number; 
   }));
 }
 
-/** Rivales con balón al alcance del hachazo y con su probabilidad premium. */
+/** Rivales con balón al alcance del hachazo, con su probabilidad (lejano penalizado). */
 export function hackOpportunities(): Array<{ victimId: number; chance: number; name: string; dist: number }> {
   const s = g.state.value;
   if (!s || g.ui.selectedId === null) return [];
   const d = getPlayer(s, g.ui.selectedId)!;
-  return hackTargets(s, d).map((v) => ({
-    victimId: v.id,
-    chance: Math.min(95, stealChance(s, d, v) + HACK_BONUS),
-    name: v.name,
-    dist: Math.max(Math.abs(d.pos.col - v.pos.col), Math.abs(d.pos.row - v.pos.row))
-  }));
+  return hackTargets(s, d).map((v) => {
+    const dist = Math.max(Math.abs(d.pos.col - v.pos.col), Math.abs(d.pos.row - v.pos.row));
+    return {
+      victimId: v.id,
+      chance: Math.min(95, stealChance(s, d, v) + hackBonusFor(dist)),
+      name: v.name,
+      dist
+    };
+  });
 }
 
 /** «Hachazo»: robo premium, gasta 1 AP y una acción especial. */

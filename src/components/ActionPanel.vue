@@ -170,11 +170,11 @@ const pen = computed(() => props.penalty ?? null);</script>
       <div class="chips">
         <button v-if="(hackOptions ?? []).length === 0" disabled>Ningún rival con balón al alcance del hachazo</button>
         <button v-for="o in hackOptions ?? []" :key="o.victimId" :class="{ gold: true }" @click="emit('hack', o.victimId)">
-          ⚡ Hachazo a {{ o.name }} ({{ o.chance }}% · a {{ o.dist }})
+          ⚡ Hachazo{{ o.dist > 1 ? ' lejano' : '' }} a {{ o.name }} ({{ o.chance }}% · a {{ o.dist }})
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
-      <p class="hint">El hachazo gasta 1 PA y una acción especial: llega a 1 casilla, o a 2 en línea recta sin nadie en medio, y roba con más garra. Si aciertas, tu barra también carga.</p>
+      <p class="hint">El hachazo gasta 1 PA y una acción especial: a 1 casilla roba con más garra; el hachazo LEJANO (a 2, en línea recta y despejada) llega con menos garra. Si aciertas, tu barra también carga.</p>
     </template>
 
     <!-- robos disponibles -->

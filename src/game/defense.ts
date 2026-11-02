@@ -2,7 +2,7 @@
  * Defensa: robos de balón a corta distancia, plantarse a cortar
  * (postura 'cut') y utilidades de presión.
  */
-import { PROB, STEAL_RANGE, CUT_RANGE, HACK_RANGE, HARDEN_STEAL_BONUS } from './config';
+import { PROB, STEAL_RANGE, CUT_RANGE, HACK_RANGE, HACK_BONUS, HACK_FAR_BONUS, HARDEN_STEAL_BONUS } from './config';
 import { cheby } from './field';
 import { carrier, isOccupied } from './rules';
 import type { Cell, GameState, Player, SoundName } from './types';
@@ -57,6 +57,15 @@ export function hackTargets(state: GameState, defender: Player): Player[] {
   };
   if (isOccupied(state, mid)) return [];
   return [c];
+}
+
+/**
+ * Bonus de probabilidad del hachazo según distancia: a 1 casilla el
+ * premium de siempre; a 2, el «hachazo lejano» llega, pero roba con mucha
+ * menos garra (pegar tan lejos penaliza).
+ */
+export function hackBonusFor(dist: number): number {
+  return dist <= STEAL_RANGE ? HACK_BONUS : HACK_FAR_BONUS;
 }
 
 /** Descripción jugable del efecto de la postura de corte (para la UI). */

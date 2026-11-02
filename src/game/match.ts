@@ -6,7 +6,7 @@
  */
 import {
   AP_PER_TURN, COST, MINUTES_PER_TURN, TURNS_PER_HALF, TEAM_COLORS, passRange,
-  SHOT_COST, SHOT_LABEL, CUT_RANGE, HACK_RANGE, HACK_BONUS, METER_MAX, SPECIALS_PER_MATCH,
+  SHOT_COST, SHOT_LABEL, CUT_RANGE, METER_MAX, SPECIALS_PER_MATCH,
   HARDEN_STEAL_BONUS, HARDEN_BLOCK_WEIGHT, HARDEN_INTERCEPT_CUT, HARDEN_INTERCEPT
 } from './config';
 import { Stream } from './rng';
@@ -22,7 +22,7 @@ export {
   enterPenalties, penaltyChance, doPenaltyKeeperMove, doPenaltyShooterMove, doPenaltyShot, advancePenalty
 } from './penalties';
 import { readShot, resolveShot, shotTarget, keeperOf } from './shooting';
-import { stealTargets, resolveSteal, cutTargets, hackTargets, stealChance } from './defense';
+import { stealTargets, resolveSteal, cutTargets, hackTargets, hackBonusFor, stealChance } from './defense';
 import { applyKickoff } from './formations';
 import { inField, cheby } from './field';
 import type {
@@ -313,10 +313,11 @@ export function doSteal(state: GameState, defenderId: number, victimId: number):
 /* ------------------------------------------------------------------ */
 
 /**
- * «Hachazo»: robo premium. Gasta 1 AP y una acción especial; roba con más
- * probabilidad (+HACK_BONUS) y llega a 2 casillas solo si la línea al
- * portador está despejada (ver hackTargets). Al contrario que el robo
- * normal, al acertar el futbolista queda agotado: el hachazo se come el turno.
+ * «Hachazo»: robo premium. Gasta 1 AP y una acción especial; su garra
+ * depende de la distancia (hackBonusFor) y llega a 2 casillas solo si la
+ * línea al portador está despejada (ver hackTargets). Al contrario que el
+ * robo normal, al acertar el futbolista queda agotado: el hachazo se come
+ * el turno.
  */
 export function doHack(state: GameState, defenderId: number, victimId: number): ActionResult {
   const d = getPlayer(state, defenderId);
@@ -331,7 +332,7 @@ export function doHack(state: GameState, defenderId: number, victimId: number): 
     return { ok: false, code: 'no_special', message: 'Sin acciones especiales no hay hachazo.', events: [] };
   }
   if (!hackTargets(state, d).some((t) => t.id === v.id)) {
-    return { ok: false, code: 'too_far', message: `El hachazo llega hasta ${HACK_RANGE} casillas.`, events: [] };
+    return { ok: false, code: 'too_far', message: 'El hachazo llega a 1 casilla, o a 2 en línea recta y sin nadie en medio.', events: [] };
   }
 
   const events: GameEvent[] = [];
@@ -339,12 +340,18 @@ export function doHack(state: GameState, defenderId: number, victimId: number): 
   d.hasActed = true;
   state.specials[d.team] -= 1;
   const stream = new Stream(state.rng, (s) => (state.rng = s));
-  // resolveSteal acepta un bonus de probabilidad para el golpe premium.
-  const res = resolveSteal(state, d, v, stream.next.bind(stream), (n) => emit(events, n), HACK_BONUS);
+  // resolveSteal acepta un bonus: hachazo a 1 casilla con garra premium;
+  // el hachazo lejano (a 2) llega, pero con mucha menos garra.
+  const dist = cheby(d.pos, v.pos);
+  const res = resolveSteal(state, d, v, stream.next.bind(stream), (n) => emit(events, n), hackBonusFor(dist));
   events.push({ type: 'steal', defenderId: d.id, success: res.success, hachazo: true });
   if (res.success) {
     grantMeter(state, d.team, events);
-    log(state, `¡HACHAZO de ${d.name}! Le parte el balón a ${v.name} y la barra brilla.`);
+    if (dist > 1) {
+      log(state, `¡HACHAZO LEJANO de ${d.name}! Desde 2 casillas le tumba el balón a ${v.name}.`);
+    } else {
+      log(state, `¡HACHAZO de ${d.name}! Le parte el balón a ${v.name} y la barra brilla.`);
+    }
   } else {
     log(state, `${d.name} lanza el hachazo... ${v.name} aguanta el golpe con el balón agarrado.`);
   }
