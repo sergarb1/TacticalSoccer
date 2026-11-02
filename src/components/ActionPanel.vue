@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { GameState, ShotKind, TeamId } from '../game/types';
-import { SHOT_COST, SHOT_LABEL, AP_PER_TURN, METER_MAX } from '../game/config';
+import type { GameState, Player, ShotKind, TeamId } from '../game/types';
+import { SHOT_COST, SHOT_LABEL, AP_PER_TURN, METER_MAX, CUT_RANGE } from '../game/config';
+import { cheby } from '../game/field';
 
 const props = defineProps<{
   state: GameState;
@@ -96,6 +97,67 @@ const shotDesc = (k: ShotKind): string | null => props.shotReads?.[k]?.descripti
 /** Iconos de tiro y acciones para leer el panel de un vistazo. */
 const SHOT_ICONS: Record<ShotKind, string> = { normal: '⚽', billetes: '💸', vaselina: '🕊️' };
 
+/**
+ * Situación del rival con balón, desde la fleska activa: para explicar el
+ * porqué cuando no hay objetivos (balón suelto, tuyo, lejos, diagonal…).
+ */
+const foe = computed<
+  | 'loose'
+  | 'own'
+  | { player: Player; dist: number; straight: boolean; midFree: boolean }
+>(() => {
+  const s = props.state;
+  if (s.ball.carrier === null) return 'loose';
+  const p = s.players.find((x) => x.id === s.ball.carrier);
+  if (!p || p.team === s.currentTeam || !selected.value) return 'own';
+  const dist = cheby(selected.value.pos, p.pos);
+  const dx = Math.abs(selected.value.pos.col - p.pos.col);
+  const dy = Math.abs(selected.value.pos.row - p.pos.row);
+  const straight = dist === 2 && (dx === 0 || dy === 0);
+  let midFree = false;
+  if (straight) {
+    const mid = {
+      col: (selected.value.pos.col + p.pos.col) / 2,
+      row: (selected.value.pos.row + p.pos.row) / 2
+    };
+    midFree = !s.players.some((q) => q.pos.col === mid.col && q.pos.row === mid.row);
+  }
+  return { player: p, dist, straight, midFree };
+});
+
+/** Por qué el robo no tiene a nadie (vacio solo si está a más de 1). */
+const whySteal = computed(() => {
+  const f = foe.value;
+  if (f === 'loose') return '⚽ El balón va suelto: corre hasta su rombo dorado y lo controlas; el robo no pilla pelotas en vuelo.';
+  if (f === 'own') return '🎉 El balón es de tu equipo: nada que robar, a lucirse con el turno.';
+  if (typeof f === 'string') return '';
+  return `🏃 ${f.player.name} está a ${f.dist} ${f.dist === 1 ? 'casilla' : 'casillas'}: el robo es cuerpo a cuerpo (a 1). Pégate al portador y roba.`;
+});
+
+/** Por qué el hachazo no tiene objetivos, con pista de la regla que falla. */
+const whyHack = computed(() => {
+  const f = foe.value;
+  if (f === 'loose') return '⚽ El hachazo busca dueño con balón agarrao: hasta que alguien lo controle, el machete no tiene diana.';
+  if (f === 'own') return '🎉 El balón es de tu equipo: el hachazo se guarda para otros lares.';
+  if (typeof f === 'string') return '';
+  const { dist, straight, midFree } = f;
+  if (dist <= 1) return '';
+  if (dist > 2) return `🏃 ${f.player.name} está a ${dist} casillas: el hachazo llega a 1, o a 2 en línea recta y despejada. Acomódate antes de sacar el machete.`;
+  if (!straight) return `📐 ${f.player.name} está a 2 pero en diagonal: el hachazo lejano solo vuela en línea recta. Da un paso para ponerte de frente.`;
+  if (!midFree) return `🚧 ${f.player.name} está a 2 y en línea, pero hay alguien plantado en medio: el hachazo no pasa por encima de nadie. Rodea o acércate a 1.`;
+  return '';
+});
+
+/** Por qué el corte no tiene objetivos: solo distancias en su caso. */
+const whyCut = computed(() => {
+  const f = foe.value;
+  if (f === 'loose') return '⚽ Sin dueño no hay línea que tapar: cuando alguien controle, plantate a cortar.';
+  if (f === 'own') return '🎉 El balón es de tu equipo: la postura de corte está para los rivales.';
+  if (typeof f === 'string') return '';
+  if (f.dist > CUT_RANGE) return `🏃 ${f.player.name} está a ${f.dist} casillas: la postura de corte se planta hasta a ${CUT_RANGE}. Arrécate un pasito.`;
+  return '';
+});
+
 /** ¿Puede el equipo activo endurecer la defensa de una vez? */
 const canHarden = computed(() =>
   props.state.phase === 'playing' && props.state.ap > 0 && !props.state.harden[props.state.currentTeam]
@@ -168,35 +230,38 @@ const pen = computed(() => props.penalty ?? null);</script>
     <!-- hachazo robador: robo premium con acciones especiales -->
     <template v-else-if="mode === 'hacking'">
       <div class="chips">
-        <button v-if="(hackOptions ?? []).length === 0" disabled>Ningún rival con balón al alcance del hachazo</button>
+        <button v-if="(hackOptions ?? []).length === 0" disabled>Ningún rival al alcance del hachazo</button>
         <button v-for="o in hackOptions ?? []" :key="o.victimId" :class="{ gold: true }" @click="emit('hack', o.victimId)">
           ⚡ Hachazo{{ o.dist > 1 ? ' lejano' : '' }} a {{ o.name }} ({{ o.chance }}% · a {{ o.dist }})
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
+      <p v-if="(hackOptions ?? []).length === 0" class="hint empty-why">{{ whyHack || '🤔 Sin objetivos ahora mismo: acércate al portador o prueba otra acción.' }}</p>
       <p class="hint">El hachazo gasta 1 PA y una acción especial: a 1 casilla roba con más garra; el hachazo LEJANO (a 2, en línea recta y despejada) llega con menos garra. Si aciertas, tu barra también carga.</p>
     </template>
 
     <!-- robos disponibles -->
     <template v-else-if="mode === 'stealing'">
       <div class="chips">
-        <button v-if="(stealOptions ?? []).length === 0" disabled>No hay rivales con balón a la vista</button>
+        <button v-if="(stealOptions ?? []).length === 0" disabled>No hay nadie a quien robar</button>
         <button v-for="o in stealOptions ?? []" :key="o.victimId" @click="emit('steal', o.victimId)">
           🧤 Robar a {{ o.name }} ({{ o.chance }}%)
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
+      <p v-if="(stealOptions ?? []).length === 0" class="hint empty-why">{{ whySteal || '🤔 Sin objetivos ahora mismo: pégate al portador rival para robar.' }}</p>
     </template>
 
     <!-- plantarse a cortar: el rival con balón al alcance -->
     <template v-else-if="mode === 'cutting'">
       <div class="chips">
-        <button v-if="(cutOptions ?? []).length === 0" disabled>Ningún rival con balón al alcance del corte</button>
+        <button v-if="(cutOptions ?? []).length === 0" disabled>Nadie a quien plantarse</button>
         <button v-for="o in cutOptions ?? []" :key="o.carrierId" @click="emit('cut', o.carrierId)">
           🛡️ Plantarse ante {{ o.name }} (a {{ o.dist }} casilla/s)
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
+      <p v-if="(cutOptions ?? []).length === 0" class="hint empty-why">{{ whyCut || '🤔 Sin objetivos ahora mismo: arrímate al portador rival para cortarle el paso.' }}</p>
       <p class="hint">La postura dura hasta tu próximo turno: corta más pases y tapa tiros rivales por tu línea.</p>
     </template>
 
@@ -209,6 +274,7 @@ const pen = computed(() => props.penalty ?? null);</script>
         </button>
         <button class="ghost" @click="emit('cancel')">Cancelar</button>
       </div>
+      <p v-if="(passOptionsList ?? []).length === 0" class="hint empty-why">🏃 Tus compañeros están lejos para tu pase (alcance 3 + PAS/2): muévete primero o busca a alguien más cerca.</p>
     </template>
 
     <!-- acciones base -->
@@ -255,6 +321,7 @@ const pen = computed(() => props.penalty ?? null);</script>
   .meter-cells i.fill:last-child { animation: none; }
 }
 .hint { font-size: 0.82rem; color: var(--text-dim); min-height: 2.1em; }
+.empty-why { color: #e8d9a0; }
 .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .end-turn { grid-column: 1 / -1; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
