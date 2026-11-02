@@ -15,7 +15,7 @@ withDefaults(
 
 <template>
   <transition name="fade">
-    <div v-if="text" class="banner-layer" :class="[kind === 'goal' ? 'goal' : '', big ? 'big' : '']">
+    <div v-if="text" class="banner-layer" :class="[kind === 'goal' ? 'goal' : kind === 'turn' ? 'turn' : '', big ? 'big' : '']">
       <div
         class="turn-banner banner-body"
         :class="{ 'goal-big': big }"
