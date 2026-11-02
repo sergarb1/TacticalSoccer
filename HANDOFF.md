@@ -9,7 +9,7 @@ Documento de traspaso: qué está hecho, cómo está verificado y qué queda por
 
 Juego de fútbol táctico **5v5** por turnos:
 
-- Campo **13×7 casillas** con vista **isométrica** (rombos de césped, portería de
+- Campo **11×6 casillas** con vista **isométrica** (rombos de césped, portería de
   1 casilla con red, arcos de penalti, líneas reglamentarias). Alcance de
   movimiento 2 + velocidad/4 y de pase 3 + pase/2 para compensar el tamaño.
 - **Sprites de jugadores** del pack *Sports Pack* de Kenney (CC0), escalados y

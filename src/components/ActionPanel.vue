@@ -261,4 +261,12 @@ const pen = computed(() => props.penalty ?? null);</script>
 .shot-box { display: grid; gap: 0.5rem; font-weight: 700; }
 .pen-step { display: grid; gap: 0.4rem; }
 .pen-step .buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+/* móvil horizontal: panel apretado; los chips de acción fluyen en filas */
+@media (max-width: 900px) and (orientation: landscape) {
+  .action-panel { padding: 0.45rem 0.65rem; gap: 0.4rem; }
+  .hint { min-height: 0; font-size: 0.76rem; }
+  .chips { gap: 0.35rem; }
+  .action-panel button { min-height: 38px; }
+}
 </style>

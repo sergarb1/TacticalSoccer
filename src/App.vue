@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import MainMenu from './components/MainMenu.vue';
 import MatchSetup from './components/MatchSetup.vue';
 import GameBoard from './components/GameBoard.vue';
@@ -36,6 +36,19 @@ const paused = ref(false);
 const settings = useSettings();
 const setupTutorial = ref(false);
 
+/* ------- orientación: en móvil se juega en horizontal ------- */
+/* El aviso solo cubre la pantalla de partido; los menús van bien en vertical. */
+const portraitSnooze = ref(false);
+let portraitMq: MediaQueryList | null = null;
+function onOrientationFlip(): void {
+  portraitSnooze.value = false; // al volver a girar, se vuelve a avisar
+}
+onMounted(() => {
+  portraitMq = window.matchMedia('(orientation: portrait)');
+  portraitMq.addEventListener?.('change', onOrientationFlip);
+});
+onUnmounted(() => portraitMq?.removeEventListener?.('change', onOrientationFlip));
+
 const state = computed(() => game.state.value);
 const ui = game.ui;
 const cupCtl = useCup();
@@ -57,6 +70,29 @@ const weatherClass = computed(() => {
 const penaltyBanner = computed(() => game.penaltyBanner.value);
 /* ------- modal de especiales ------- */
 const specialFx = computed(() => game.specialFx.value);
+
+/* ------- móvil apaisado: acciones en modal flotante ------- */
+const actionsOpen = ref(false);
+/* al elegir «Mover» se cierra: en ese modo manda el tablero */
+watch(
+  () => ui.mode,
+  (m) => {
+    if (m === 'moving') actionsOpen.value = false;
+  }
+);
+/* al marcar ficha, el modal sale solo: no hay que andar buscando el botón */
+watch(
+  () => ui.selectedId,
+  (id, prev) => {
+    if (id !== null && id !== prev) actionsOpen.value = true;
+    else if (id === null && ui.mode === 'idle') actionsOpen.value = false;
+  }
+);
+const selectedName = computed(() => {
+  const s = state.value;
+  if (!s || ui.selectedId === null) return 'Acciones';
+  return s.players.find((p) => p.id === ui.selectedId)?.name ?? 'Acciones';
+});
 
 /* ------- datos de la tanda para el panel ------- */
 const penaltyUi = computed<PenaltyUi>(() => ({
@@ -405,6 +441,48 @@ function endTutorial(): void {
         </div>
       </div>
 
+      <!-- móvil apaisado: acceso flotante a las acciones y al turno -->
+      <div class="actions-fab">
+        <span class="fab-pa">PA {{ state.ap }}</span>
+        <button @click="actionsOpen = true">🎯 Acciones</button>
+        <button title="Terminar turno" :disabled="state.phase !== 'playing'" @click="finishTurn()">⏭</button>
+      </div>
+
+      <div class="actions-modal" :class="{ open: actionsOpen }" role="dialog" aria-label="Acciones del jugador">
+        <div class="panel actions-sheet">
+          <button class="ghost sheet-close" title="Cerrar" @click="actionsOpen = false">✕</button>
+          <strong class="sheet-title">{{ selectedName }}</strong>
+          <ActionPanel
+            :state="state"
+            :selected-id="ui.selectedId"
+            :mode="ui.mode"
+            :pass-options-list="passOptions"
+            :steal-options="stealOptions"
+            :hack-options="hackOptions"
+            :cut-options="cutOptions"
+            :shot-reads="shotReads ?? undefined"
+            @move="actionMove()"
+            @pass-mode="setMode('passing')"
+            @pass-to="actionPass($event)"
+            @steal-mode="setMode('stealing')"
+            @steal="actionSteal($event)"
+            @hack-mode="setMode('hacking')"
+            @hack="actionHack($event)"
+            @cut-mode="setMode('cutting')"
+            @cut="actionCut()"
+            @shoot-arm="actionShotArm()"
+            @shoot="onShot"
+            @shoot-cancel="cancelMode()"
+            @cancel="cancelMode()"
+            @end-turn="finishTurn()"
+            :penalty="penaltyUi"
+            @harden="actionHarden()"
+            @penalty-ready="actionPenaltyReady()"
+            @penalty-shoot="actionPenaltyShoot()"
+          />
+        </div>
+      </div>
+
       <TurnBanner
         :text="ui.turnBanner ?? null"
         kind="turn"
@@ -444,6 +522,15 @@ function endTutorial(): void {
       />
 
       <PauseMenu v-if="paused" @resume="paused = false" @quit="quitToMenu" />
+
+      <div class="rotate-overlay" :class="{ snoozed: portraitSnooze }" role="dialog" aria-label="Aviso de orientación">
+        <div class="rotate-hint panel">
+          <span class="rotate-ico" aria-hidden="true">📱↔️</span>
+          <b>¡Gira el móvil!</b>
+          <p>El campo entero se ve mucho mejor en horizontal.</p>
+          <button class="ghost" @click="portraitSnooze = true">Mantener en vertical</button>
+        </div>
+      </div>
 
       <MatchResult
         v-if="ui.gameOver"
@@ -543,5 +630,126 @@ function endTutorial(): void {
   .board-col { order: -1; }
   .game-screen { padding: calc(3.9rem + env(safe-area-inset-top)) 0.5rem 1rem; gap: 0.5rem; }
   .board-svg { max-height: 62vh; }
+}
+
+/* ------- móvil horizontal: todo el partido en una pantalla, sin scroll ------- */
+@media (max-width: 900px) and (orientation: landscape) {
+  .game-screen {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    gap: 0.4rem;
+    padding: calc(0.25rem + env(safe-area-inset-top)) calc(0.5rem + env(safe-area-inset-right)) calc(2.7rem + env(safe-area-inset-bottom)) calc(0.5rem + env(safe-area-inset-left));
+  }
+  /* el tablero manda: todo el ancho para el campo */
+  .game-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0;
+  }
+  .board-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  .side-col { display: none; }  /* el marcador del panel pasa al modal y al FAB */
+  .board-col > .board-wrap { flex: 1 1 auto; min-height: 0; }
+  .tip-strip,
+  .nudge-card { display: none; }
+  .scoreboard {
+    margin: 0 auto;
+    width: auto;
+    min-width: 300px;
+    max-width: 60vw;
+  }
+}
+
+/* ------- FAB de acciones (solo móvil apaisado) ------- */
+.actions-fab { display: none; }
+@media (max-width: 900px) and (orientation: landscape) {
+  .actions-fab {
+    display: flex;
+    position: fixed;
+    right: calc(0.6rem + env(safe-area-inset-right));
+    bottom: calc(2.9rem + env(safe-area-inset-bottom));
+    align-items: center;
+    gap: 0.45rem;
+    z-index: 55;
+  }
+  .actions-fab button {
+    min-height: 44px;
+    font-size: 0.95rem;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+  }
+  .fab-pa {
+    font-weight: 800;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    background: rgba(6, 14, 10, 0.85);
+  }
+}
+
+/* ------- modal de acciones (solo móvil apaisado) ------- */
+.actions-modal { display: none; }
+@media (max-width: 900px) and (orientation: landscape) {
+  .actions-modal.open {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(5, 11, 8, 0.55);
+    backdrop-filter: blur(2px);
+  }
+  .actions-sheet {
+    position: relative;
+    width: min(96vw, 560px);
+    max-height: 82dvh;
+    overflow-y: auto;
+    padding: 0.8rem 0.9rem 1rem;
+  }
+  .sheet-close {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.35rem;
+    min-height: 32px;
+    padding: 0.15rem 0.6rem;
+  }
+  .sheet-title {
+    display: block;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.3rem;
+  }
+}
+
+/* ------- aviso de orientación: solo en vertical de móvil ------- */
+.rotate-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 11, 8, 0.85);
+}
+.rotate-hint {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  max-width: 340px;
+  padding: 1.2rem 1.4rem;
+  text-align: center;
+}
+.rotate-hint b { font-size: 1.45rem; letter-spacing: 0.05em; }
+.rotate-hint p { margin: 0; font-size: 0.92rem; color: var(--text-dim); }
+.rotate-ico { font-size: 2.4rem; }
+@media (max-width: 760px) and (orientation: portrait) {
+  .rotate-overlay { display: flex; }
+  .rotate-overlay.snoozed { display: none; }
 }
 </style>

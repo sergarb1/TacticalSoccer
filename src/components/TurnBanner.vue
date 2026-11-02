@@ -49,16 +49,40 @@ withDefaults(
   border: 1px solid var(--panel-border);
   box-shadow: var(--shadow);
 }
+/* el gol sale a toda pantalla: se cierra un telón oscuro y la pizarra
+   aterriza en medio, como en los estadios grandes */
+.banner-layer.goal {
+  top: 0;
+  bottom: 0;
+  align-items: center;
+}
+.banner-layer.goal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(4, 10, 7, 0.3) 25%, rgba(4, 10, 7, 0.75) 100%);
+  animation: goal-curtain 3.2s ease forwards;
+}
+.banner-layer.goal .banner-body { position: relative; }
+@keyframes goal-curtain {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; }
+}
 .goal .banner-body { color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
 .big { top: 22%; }
+.banner-layer.goal.big { top: 0; }  /* el gol manda: siempre centrado */
 .goal-big {
   animation: goal-banner-in 3.2s ease forwards;
-  font-size: clamp(2.8rem, 10vw, 5.4rem);
+  font-size: clamp(2.8rem, 11vw, 6rem);
   letter-spacing: 0.14em;
-  padding: 1rem 3rem;
-  border-radius: 20px;
+  padding: 1.2rem 3.4rem;
+  border-radius: 24px;
+  box-shadow: 0 18px 90px rgba(0, 0, 0, 0.65);
 }
 @media (prefers-reduced-motion: reduce) {
-  .goal-big { animation: none; }
+  .goal-big, .banner-layer.goal::before { animation: none; }
+  .banner-layer.goal::before { opacity: 0.9; }
 }
 </style>

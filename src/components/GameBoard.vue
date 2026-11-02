@@ -325,6 +325,12 @@ const goalHintPos = computed(() => {
   border-radius: 18px;
   box-shadow: var(--shadow);
 }
+/* móvil horizontal: el wrap manda (App le da el alto que sobra del marco),
+   y el SVG se ajusta dentro encajando todo el campo a la vista */
+@media (max-width: 900px) and (orientation: landscape) {
+  .board-wrap { height: 100%; }
+  .board-svg { height: 100%; max-height: none; }
+}
 .hl-cell {
   cursor: pointer;
   transition: fill 0.12s ease;

@@ -82,4 +82,14 @@ h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color:
 .stats { display: grid; gap: 4px; }
 .val { text-align: right; color: var(--text); }
 .turn-state { margin-top: 0.6rem; font-size: 0.74rem; color: var(--text-dim); }
+
+/* móvil horizontal: solo nombre y estado, sin barras de atributos */
+@media (max-width: 900px) and (orientation: landscape) {
+  .player-panel { padding: 0.5rem 0.75rem; }
+  h3 { margin-bottom: 0.2rem; }
+  .stats { display: none; }
+  .header { margin-bottom: 0.25rem; }
+  .badge { width: 26px; height: 26px; }
+  .turn-state { margin-top: 0.25rem; }
+}
 </style>

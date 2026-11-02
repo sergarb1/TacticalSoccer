@@ -46,7 +46,7 @@ describe('inicio de partida', () => {
     expect(s.currentTeam).toBe(0);
     expect(s.ap).toBe(AP_PER_TURN);
     expect(s.ball.carrier).toBeNull();
-    expect(s.ball.pos).toEqual({ col: 6, row: 3 });
+    expect(s.ball.pos).toEqual({ col: 5, row: 3 });
     expect(s.phase).toBe('playing');
   });
 
@@ -236,7 +236,7 @@ describe('disparos y goles', () => {
     // tras el gol, recolocación: saca el equipo que ENCAJA el tanto
     expect(s.currentTeam).toBe(1);
     expect(s.ball.carrier).toBeNull();
-    expect(s.ball.pos).toEqual({ col: 6, row: 3 });
+    expect(s.ball.pos).toEqual({ col: 5, row: 3 });
   });
 
   it('la parada la retiene el portero (tirada de despeje favorable)', () => {
@@ -299,7 +299,7 @@ describe('disparos y goles', () => {
   it('el Tiro Billetes cuesta 2 AP y llega más lejos que el tiro normal', () => {
     const s = fresh();
     const shooter = s.players.find((p) => p.team === s.currentTeam && p.role === 'DC')!;
-    // lejos del arco (col 4 vs portería en col 13)
+    // lejos del arco (col 4 vs portería en col 11)
     shooter.pos = { col: 4, row: 3 };
     s.ball.carrier = shooter.id;
     s.ball.pos = { ...shooter.pos };
@@ -316,8 +316,8 @@ describe('disparos y goles', () => {
   it('la Vaselina penaliza menos por ángulo que el tiro normal', () => {
     const s = fresh();
     const shooter = s.players.find((p) => p.team === s.currentTeam && p.role === 'DC')!;
-    // cerca y con ángulo: fila extrema mirando la portería central (fila 3)
-    shooter.pos = { col: 11, row: 6 };
+    // cerca y con ángulo: esquina mirando la portería central (fila 3)
+    shooter.pos = { col: 10, row: 5 };
     s.ball.carrier = shooter.id;
     s.ball.pos = { ...shooter.pos };
     expect(readShot(s, shooter, 'vaselina').goal).toBeGreaterThan(readShot(s, shooter, 'normal').goal);
@@ -327,9 +327,12 @@ describe('disparos y goles', () => {
     const s = fresh();
     const prepped = prepareShooter(s);
     const shooter = s.players.find((p) => p.id === prepped.shooter)!;
+    // en un campo de 11 col, el tirador se aleja para dejar hueco al defensor
+    shooter.pos = { col: 8, row: 3 };
+    s.ball.pos = { ...shooter.pos };
     const def = s.players.find((p) => p.team === 1 && p.role === 'DFC')!;
-    // a mitad de camino entre tirador (col 10) y portería (col 13)
-    def.pos = { col: 11, row: 3 };
+    // entre el tirador (col 8) y la portería (col 11)
+    def.pos = { col: 10, row: 3 };
     const sin = readShot(s, shooter).block;
     def.stance = 'cut';
     const con = readShot(s, shooter).block;

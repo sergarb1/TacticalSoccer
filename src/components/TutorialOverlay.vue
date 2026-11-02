@@ -38,4 +38,18 @@ const emit = defineEmits<{ (e: 'next'): void; (e: 'skip'): void }>();
 .count { font-size: 0.75rem; color: var(--text-dim); }
 .text { margin: 0 0 0.6rem; font-size: 0.9rem; color: var(--text); }
 .buttons { display: flex; gap: 0.6rem; }
+
+/* móvil horizontal: esquina discreta arriba a la izquierda, lejos de la radio y del FAB */
+@media (max-width: 900px) and (orientation: landscape) {
+  .tut {
+    left: 0.6rem;
+    right: auto;
+    transform: none;
+    bottom: 3rem;
+    width: min(46vw, 320px);
+    padding: 0.5rem 0.7rem;
+  }
+  .text { font-size: 0.78rem; }
+  .buttons button { min-height: 36px; padding: 0.35rem 0.6rem; font-size: 0.8rem; }
+}
 </style>

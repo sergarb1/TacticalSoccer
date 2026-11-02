@@ -7,17 +7,18 @@ import type { ShotKind, TeamId } from './types';
 
 /**
  * Dimensiones del campo en casillas (5 contra 5).
- * Rejilla 13 x 7 con vista isométrica; campo grande para más estrategia,
- * contrapesado con más alcance de movimiento y de pase.
+ * Rejilla 11 x 6 con vista isométrica; campo compacto, pensado también
+ * para jugar en pantallas pequeñas (móvil apaisado), contrapesado con
+ * buen alcance de movimiento y de pase.
  */
-export const FIELD_COLS = 13;
-export const FIELD_ROWS = 7;
+export const FIELD_COLS = 11;
+export const FIELD_ROWS = 6;
 /** Filas ocupadas por la boca de la portería (arco pequeño: solo el centro). */
-export const GOAL_ROWS = [3] as const;
+export const GOAL_ROWS = [Math.floor(FIELD_ROWS / 2)] as const;
 /** Fila central de la boca del arco: objetivo de los disparos. */
-export const GOAL_CENTER_ROW = 3;
-/** Casilla del saque de centro. */
-export const KICKOFF_CELL = { col: 6, row: 3 };
+export const GOAL_CENTER_ROW = Math.floor(FIELD_ROWS / 2);
+/** Casilla del saque de centro: el centro del campo. */
+export const KICKOFF_CELL = { col: Math.floor(FIELD_COLS / 2), row: GOAL_CENTER_ROW };
 
 /** Puntos de acción (AP) por turno. */
 export const AP_PER_TURN = 3;
@@ -158,11 +159,11 @@ export const PROB = {
   stealMax: 88
 };
 
-/** Claves de localStorage (v2: el formato de campo cambió, las partidas
- * guardadas con rejilla 9x5 se descartan con gracia). */
+/** Claves de localStorage (v3: el formato de campo cambió a 11x6, las
+ * partidas guardadas con la rejilla anterior se descartan con gracia). */
 export const STORAGE_KEYS = {
   settings: 'tactical-soccer.settings.v1',
-  match: 'tactical-soccer.match.v2',
+  match: 'tactical-soccer.match.v3',
   cup: 'tactical-soccer.cup.v1',
   league: 'tactical-soccer.league.v1',
   records: 'tactical-soccer.records.v1'

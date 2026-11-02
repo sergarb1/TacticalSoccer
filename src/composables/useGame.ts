@@ -279,6 +279,16 @@ export function cancelMode(): void {
 export function boardCellClick(cell: Cell): void {
   const s = g.state.value;
   if (!s || g.ui.busyAi) return;
+  // Tocar la casilla de una ficha equivale a tocar la ficha: de vistazo
+  // en pantallas pequeñas la ficha es difícil de acertar con el dedo.
+  // En modo «mover» la casilla es destino, así que ahí no se delega.
+  if (s.phase === 'playing' && g.ui.mode !== 'moving') {
+    const occupant = s.players.find((q) => q.pos.col === cell.col && q.pos.row === cell.row);
+    if (occupant) {
+      boardTokenClick(occupant.id);
+      return;
+    }
+  }
   // Tanda de penaltis: el click mueve al activo de la tanda (portero o lanzador).
   if (s.phase === 'penalti') {
     if (!penaltyGuard(s).ok) return;

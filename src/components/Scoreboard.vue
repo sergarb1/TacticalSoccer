@@ -91,4 +91,15 @@ function apDotsBold(team: TeamId): number {
 .tag-home { color: var(--home); }
 .tag-away { color: var(--away); }
 .pause-btn { font-size: 1.05rem; padding: 0.35rem 0.6rem; }
+
+/* móvil horizontal: marcador compacto para no comer campo */
+@media (max-width: 900px) and (orientation: landscape) {
+  .scoreboard { padding: 0.25rem 0.6rem; gap: 0.4rem; }
+  .score { font-size: 1.15rem; }
+  .chip { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
+  .aps { font-size: 0.68rem; }
+  .meta { gap: 0.55rem; font-size: 0.62rem; margin-top: 0; }
+  .turn-tag { display: none; }
+  .pause-btn { font-size: 0.95rem; padding: 0.25rem 0.55rem; min-height: 0; }
+}
 </style>

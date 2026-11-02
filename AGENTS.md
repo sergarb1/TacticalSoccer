@@ -4,7 +4,7 @@ Guía para cualquier agente de IA (o persona) que trabaje en Tactical Soccer · 
 
 ## Qué es este proyecto
 
-Juego de fútbol táctico por turnos **5v5 en un campo de 13×7 casillas con vista isométrica**,
+Juego de fútbol táctico por turnos **5v5 en un campo de 11×6 casillas con vista isométrica**,
 hecho como web app estática e **instalable (PWA, offline).** Stack: **Vue 3 + TypeScript + Vite + SVG**, sin backend ni
 servicios externos: todo el cálculo ocurre en el navegador y los ajustes guardados viven en
 `localStorage`.
@@ -48,8 +48,8 @@ Todo cambio debe pasar los tres pasos antes de considerarse terminado. Las 40 pr
   se comparte como «código del reto» desde la pantalla final.
 - **Todo el texto visible está en español** (con sabor intencionalmente valencianista,
   «Gañan Edition»). Mantén ese tono en la UI y en la narración.
-- Formato del campo: 13 columnas × 7 filas (campo grande con más alcance de
-  movimiento y pase), portería de 1 casilla en la fila `GOAL_CENTER_ROW`,
+- Formato del campo: 11 columnas × 6 filas (campo compacto, jugable en pantallas
+  pequeñas), portería de 1 casilla en la fila `GOAL_CENTER_ROW`,
   5 jugadores por equipo (1 POR + 4 de campo), 3 AP por turno, tiros
   especiales «Tiro Billetes» y «Vaselina» (2 AP, gasta usos `SPECIALS_PER_MATCH` +
   barras `METER_MAX`), postura de corte (`cut`), «Hachazo» robador y «Endurecer

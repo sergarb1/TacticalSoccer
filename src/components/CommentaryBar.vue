@@ -92,6 +92,25 @@ onUnmounted(() => window.clearInterval(timer));
   font-style: italic;
 }
 .comm-idle { color: rgba(242, 239, 230, 0.5); font-weight: 400; }
+
+/* móvil horizontal: radio abajo, como la tanda de TV, más grande */
+@media (max-width: 900px) and (orientation: landscape) {
+  .comm-bar {
+    max-width: none;
+    top: auto;
+    bottom: 0;
+    gap: 0.7rem;
+    border-bottom: none;
+    border-top: 2px solid rgba(232, 184, 63, 0.55);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
+    padding: 0.3rem 0.9rem calc(0.35rem + env(safe-area-inset-bottom));
+  }
+  .comm-minute { display: flex; align-items: baseline; gap: 0.4rem; }
+  .comm-ratio { font-size: 0.55rem; }
+  .comm-min { font-size: 1.5rem; }
+  .comm-text.main { font-size: 1.08rem; }
+  .comm-text.echo { display: none; }
+}
 @keyframes comm-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
