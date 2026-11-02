@@ -19,7 +19,9 @@ export function validateMatch(data: unknown): GameState | null {
     if (s.v !== 1) return null;
     if (!s.config || !s.config.home || !s.config.away) return null;
     if (!Array.isArray(s.players) || s.players.length !== 10) return null;
-    if (!s.ball || typeof s.ball.carrier !== 'object' && s.ball.carrier !== null) return null;
+    // portador: id numérico o null (un typeof 'object' rechazaría TODA
+    // partida en posesión y «Continuar» la borraría al arrancar)
+    if (!s.ball || (typeof s.ball.carrier !== 'number' && s.ball.carrier !== null)) return null;
     if (!Array.isArray(s.score) || s.score.length !== 2) return null;
     if (s.stats === undefined || s.stats === null || s.stats.length !== 2) return null;
     for (const p of s.players) {
